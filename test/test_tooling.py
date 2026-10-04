@@ -51,6 +51,14 @@ class SimChip8:
                 k = self.key_queue.pop(0)
                 self.v[self.key_reg] = k
                 self.waiting_for_key = False
+            elif self.keys_pressed:
+                if self.keys_pressed & 0x01: k = 0x2
+                elif self.keys_pressed & 0x02: k = 0x8
+                elif self.keys_pressed & 0x04: k = 0x4
+                elif self.keys_pressed & 0x08: k = 0x6
+                else: k = 0
+                self.v[self.key_reg] = k
+                self.waiting_for_key = False
             else:
                 return
 
@@ -355,7 +363,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 1777)
+        self.assertEqual(len(bytecode), 1841)
 
     def test_modular_compiler_equivalence(self):
         import compiler
@@ -813,14 +821,15 @@ class TestToolingGuards(unittest.TestCase):
 
         # 1. Title screen exit on BACK (0x04)
         sim = SimChip8(bc)
-        for _ in range(50):
+        steps = 0
+        while not sim.waiting_for_key and steps < 300:
             sim.step()
-            if sim.exited:
-                break
+            steps += 1
+        self.assertTrue(sim.waiting_for_key, "Flappy Bird should reach wait_key on title screen")
         self.assertFalse(sim.exited, "Flappy Bird should not exit prematurely on title screen")
 
         sim.keys_pressed = 0x04  # Press BACK
-        for _ in range(100):
+        for _ in range(50):
             sim.step()
             if sim.exited:
                 break
@@ -828,10 +837,14 @@ class TestToolingGuards(unittest.TestCase):
 
         # 2. In-game exit on BACK
         sim2 = SimChip8(bc)
-        for _ in range(30):
+        steps = 0
+        while not sim2.waiting_for_key and steps < 300:
             sim2.step()
+            steps += 1
+        self.assertTrue(sim2.waiting_for_key)
+
         sim2.keys_pressed = 0x08  # Press OK to start
-        for _ in range(50):
+        for _ in range(10):
             sim2.step()
         sim2.keys_pressed = 0x00  # Release
         for _ in range(50):

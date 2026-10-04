@@ -20,7 +20,7 @@
 #define BIRD_X          24
 #define GROUND_Y        56
 #define PIPE_WIDTH      10
-#define PIPE_GAP_H      22
+#define PIPE_GAP_H      28
 
 /* 8x8 Bird Sprite: Gliding / Wings down */
 static const uint8_t bird_glide[8] = {
@@ -47,31 +47,31 @@ static const uint8_t bird_flap[8] = {
 };
 
 static uint8_t game_state = STATE_TITLE;
-static uint8_t bird_y = 24;
+static uint8_t bird_y = 22;
 static uint8_t jump_timer = 0;
 static uint8_t flap_anim = 0;
-static uint8_t fall_counter = 0;
+static uint8_t fall_speed = 0;
 static uint8_t prev_flap = 0;
 
-static uint8_t pipe1_x = 80;
-static uint8_t pipe1_gap = 16;
-static uint8_t pipe2_x = 144;
-static uint8_t pipe2_gap = 20;
+static uint8_t pipe1_x = 120;
+static uint8_t pipe1_gap = 10;
+static uint8_t pipe2_x = 192;
+static uint8_t pipe2_gap = 14;
 
 static uint8_t score = 0;
 static uint8_t best_score = 0;
 
 static void reset_game(void) {
-    bird_y = 24;
-    jump_timer = 0;
-    flap_anim = 0;
-    fall_counter = 0;
+    bird_y = 22;
+    jump_timer = 5;
+    flap_anim = 6;
+    fall_speed = 0;
     prev_flap = 0;
     score = 0;
-    pipe1_x = 80;
-    pipe1_gap = 14;
-    pipe2_x = 144;
-    pipe2_gap = 22;
+    pipe1_x = 120;
+    pipe1_gap = 10;
+    pipe2_x = 192;
+    pipe2_gap = 14;
 }
 
 static void render_world(void) {
@@ -123,24 +123,6 @@ int main(void) {
     }
 
     while (1) {
-        uint8_t keys = feb_get_keys();
-
-        /* Programmatic Exit: BACK button immediately returns to FEB Runner */
-        if (keys & FEB_BTN_BACK) {
-            feb_exit();
-        }
-
-        /* Edge detection for flap/action button (OK or UP) */
-        uint8_t action_pressed = 0;
-        if (keys & (FEB_BTN_OK | FEB_BTN_UP)) {
-            if (prev_flap == 0) {
-                action_pressed = 1;
-            }
-            prev_flap = 1;
-        } else {
-            prev_flap = 0;
-        }
-
         if (game_state == STATE_TITLE) {
             feb_clear_screen();
             feb_set_draw_mode(FEB_DRAW_MODE_SET);
@@ -150,17 +132,37 @@ int main(void) {
             feb_draw_string(32, 46, "BACK: EXIT", FEB_FONT_6X10);
             feb_draw_hline(0, GROUND_Y, 128);
 
-            if (action_pressed) {
+            uint8_t key = feb_wait_key();
+            if (key == FEB_KEY_BACK) {
+                feb_exit();
+            }
+            if (key == FEB_KEY_OK || key == FEB_KEY_UP) {
                 reset_game();
-                jump_timer = 4;
-                flap_anim = 6;
                 game_state = STATE_PLAYING;
             }
-            feb_delay_frames(2);
         } else if (game_state == STATE_PLAYING) {
+            uint8_t keys = feb_get_keys();
+
+            /* Programmatic Exit: BACK button immediately returns to FEB Runner */
+            if (keys & FEB_BTN_BACK) {
+                feb_exit();
+            }
+
+            /* Edge detection for flap/action button (OK or UP) */
+            uint8_t action_pressed = 0;
+            if (keys & (FEB_BTN_OK | FEB_BTN_UP)) {
+                if (prev_flap == 0) {
+                    action_pressed = 1;
+                }
+                prev_flap = 1;
+            } else {
+                prev_flap = 0;
+            }
+
             /* Input handling */
             if (action_pressed) {
-                jump_timer = 4;
+                jump_timer = 5;
+                fall_speed = 0;
                 flap_anim = 6;
             }
 
@@ -171,55 +173,69 @@ int main(void) {
 
             /* Physics: jump vs gravity */
             if (jump_timer > 0) {
-                if (bird_y > 2) {
-                    bird_y -= 2;
+                uint8_t dy = 2;
+                if (jump_timer >= 4) {
+                    dy = 3;
+                } else if (jump_timer == 1) {
+                    dy = 1;
+                }
+
+                if (bird_y > dy + 1) {
+                    bird_y -= dy;
                 } else {
                     bird_y = 1;
+                    jump_timer = 0;
                 }
                 jump_timer--;
-                fall_counter = 0;
+                fall_speed = 0;
             } else {
-                fall_counter++;
-                if (fall_counter >= 2) {
-                    bird_y += 2;
-                } else {
-                    bird_y += 1;
+                if (fall_speed < 10) {
+                    fall_speed++;
                 }
+                uint8_t dy = 1;
+                if (fall_speed >= 6) {
+                    dy = 2;
+                } else if (fall_speed <= 2) {
+                    if ((fall_speed & 1) == 0) {
+                        dy = 0;
+                    }
+                }
+                bird_y += dy;
             }
 
             /* Pipe scrolling & wrapping */
             pipe1_x--;
             if (pipe1_x == 0) {
-                pipe1_x = 127;
-                pipe1_gap = 10 + (feb_rand(0x0F));
+                pipe1_x = 144;
+                pipe1_gap = 8 + (feb_rand(0x07));
             }
-            if (pipe1_x == 23) {
+            if (pipe1_x == 14) {
                 score++;
             }
 
             pipe2_x--;
             if (pipe2_x == 0) {
-                pipe2_x = 127;
-                pipe2_gap = 10 + (feb_rand(0x0F));
+                pipe2_x = 144;
+                pipe2_gap = 8 + (feb_rand(0x07));
             }
-            if (pipe2_x == 23) {
+            if (pipe2_x == 14) {
                 score++;
             }
 
-            /* Collision Check */
+            /* Collision Check: forgiving 1px margin around 8x8 sprite */
             uint8_t hit = 0;
-            if (bird_y >= 48) {
+            if (bird_y >= 49) {
                 hit = 1;
             }
 
-            if (pipe1_x >= 16 && pipe1_x <= 32) {
-                if (bird_y < pipe1_gap || (bird_y + 8) > (pipe1_gap + PIPE_GAP_H)) {
+            if (pipe1_x >= 16 && pipe1_x <= 30) {
+                if ((bird_y + 1) < pipe1_gap || (bird_y + 6) > (pipe1_gap + PIPE_GAP_H)) {
                     hit = 1;
                 }
             }
 
-            if (pipe2_x >= 16 && pipe2_x <= 32) {
-                if (bird_y < pipe2_gap || (bird_y + 8) > (pipe2_gap + PIPE_GAP_H)) {
+            if (pipe2_x >= 16 && pipe2_x <= 30) {
+                if ((bird_y + 1) < pipe2_gap || (bird_y + 6) > (pipe2_gap + PIPE_GAP_H)) {
                     hit = 1;
                 }
             }
@@ -250,13 +266,14 @@ int main(void) {
             feb_draw_number(56, 34, best_score, FEB_FONT_4X6);
             feb_draw_string(24, 42, "OK:PLAY  BACK:EXIT", FEB_FONT_4X6);
 
-            if (action_pressed) {
+            uint8_t key = feb_wait_key();
+            if (key == FEB_KEY_BACK) {
+                feb_exit();
+            }
+            if (key == FEB_KEY_OK || key == FEB_KEY_UP) {
                 reset_game();
-                jump_timer = 4;
-                flap_anim = 6;
                 game_state = STATE_PLAYING;
             }
-            feb_delay_frames(2);
         }
     }
 
