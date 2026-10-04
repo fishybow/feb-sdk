@@ -64,6 +64,17 @@ The `.feb` (Flashiibo Executable Binary) format is a lightweight, sandboxed exec
 | `88..91`| `payload_size` | `uint32_t` | Byte length of payload following header |
 | `92..95`| `crc32` | `uint32_t` | Optional CRC-32 checksum of the payload |
 
+### 2.2 16×16 Icon Bitmap Format
+
+The 32-byte application icon occupies header offsets `56..87` and follows the Super-CHIP 16×16 sprite bitmap convention:
+- **Dimensions:** 16 rows × 16 columns (256 pixels total).
+- **Encoding:** Row-major order; each row is exactly 2 bytes (16 bits).
+- **Bit Order:** Big-endian per byte pair:
+  - Byte `y * 2 + 0`: Pixels `x = 0..7` (Bit 7 is `x = 0`, Bit 0 is `x = 7`).
+  - Byte `y * 2 + 1`: Pixels `x = 8..15` (Bit 7 is `x = 8`, Bit 0 is `x = 15`).
+- **Polarity:** `1` = Lit pixel (OLED ON / white), `0` = Unlit pixel (OLED OFF / black).
+- **Tooling:** Developers can generate icons from PNG/JPEG/BMP images, ASCII text grids, or procedural text glyphs using `tools/make_icon.py`.
+
 ---
 
 ## 3. Persistent Storage Specification (`.sav` Sidecar Files)

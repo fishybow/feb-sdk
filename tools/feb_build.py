@@ -25,6 +25,7 @@ sys.path.insert(0, TOOLS_DIR)
 
 import assemble_chip8
 import make_feb
+import make_icon
 
 def compile_c_to_asm(c_source_path):
     """
@@ -598,6 +599,7 @@ def main():
     parser.add_argument("--title", required=True, help="Display title (max 23 chars)")
     parser.add_argument("--author", default="Flashiibo", help="Author string")
     parser.add_argument("--ver", default="1.0.0", help="Version string")
+    parser.add_argument("--icon", default=None, help="Path to 16x16 icon (.png, .txt, .h, or 32-byte .bin)")
     args = parser.parse_args()
 
     input_path = args.input
@@ -618,6 +620,26 @@ def main():
     bytecode = assemble_chip8.assemble(asm_code)
     print(f"[FEB_BUILD] Compiled {input_path} -> {len(bytecode)} bytes bytecode")
 
+    # Determine icon (explicit argument or auto-detected in source directory)
+    icon_bytes = None
+    icon_path = args.icon
+    if not icon_path:
+        src_dir = os.path.dirname(os.path.abspath(input_path))
+        for cand in ["icon.png", "icon.txt", "icon.bin", "icon.bmp", "icon.h"]:
+            cand_path = os.path.join(src_dir, cand)
+            if os.path.exists(cand_path):
+                icon_path = cand_path
+                print(f"[FEB_BUILD] Auto-detected app icon: {cand_path}")
+                break
+
+    if icon_path:
+        if not os.path.exists(icon_path):
+            print(f"Error: icon file '{icon_path}' not found", file=sys.stderr)
+            sys.exit(1)
+        icon_bytes = make_icon.load_icon(icon_path)
+    elif "2048" in args.title or "2048" in input_path:
+        icon_bytes = make_feb.ICON_2048_16x16
+
     # Step 2: Package into .feb container
     output_path = args.output
     out_dir = os.path.dirname(output_path)
@@ -629,13 +651,15 @@ def main():
         title=args.title,
         author=args.author,
         version=args.ver,
-        payload=bytecode
+        payload=bytecode,
+        icon=icon_bytes
     )
 
     with open(output_path, "wb") as f:
         f.write(feb_bytes)
 
-    print(f"[FEB_BUILD] Packaged -> {output_path} ({len(feb_bytes)} bytes)")
+    icon_info = f", custom icon: {len(icon_bytes)}B" if icon_bytes else ""
+    print(f"[FEB_BUILD] Packaged -> {output_path} ({len(feb_bytes)} bytes{icon_info})")
 
 if __name__ == "__main__":
     main()

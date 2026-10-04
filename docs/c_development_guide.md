@@ -173,11 +173,14 @@ feb-sdk/
 │   └── feb.h              <-- Flashiibo SDK header
 ├── tools/
 │   ├── feb_build.py       <-- Build orchestrator
+│   ├── make_icon.py       <-- 16x16 app icon generator & previewer
+│   ├── feb_icon.py        <-- Icon tool alias
 │   ├── make_feb.py        <-- .feb container packager
 │   └── assemble_chip8.py  <-- Bytecode assembler
 └── examples/
     └── my_app/
         ├── Makefile       <-- App build script
+        ├── icon.txt       <-- 16x16 app icon (auto-detected)
         └── main.c         <-- Your C application
 ```
 
@@ -213,6 +216,39 @@ $(TARGET): main.c ../../include/feb.h
 
 clean:
 	rm -f $(TARGET)
+```
+
+### 5.4 Designing and Customizing Your App Icon (`make_icon.py`)
+
+Flashiibo FEB executables feature a **16×16 monochrome (1-bit) icon** displayed on the device menu.
+
+#### Option A: ASCII Grid Template (Recommended for Fast Prototyping)
+```bash
+# Generate a template:
+python3 tools/make_icon.py --template icon.txt
+
+# Edit with '#' for pixels ON, '.' for OFF, then build:
+python3 tools/feb_build.py main.c -o my_app.feb --icon icon.txt
+```
+*(If `icon.txt`, `icon.png`, or `icon.bin` is placed in the same directory as `main.c`, `feb_build.py` automatically detects and packages it).*
+
+#### Option B: From PNG Artwork
+```bash
+python3 tools/make_icon.py artwork.png -o icon.bin --mode crop
+```
+
+#### Option C: Procedural Text/Letter Icon
+```bash
+python3 tools/make_icon.py --text "20" --border -o icon.bin
+```
+
+#### Option D: Terminal Preview & Image Export
+```bash
+# Preview in terminal using Unicode blocks:
+python3 tools/make_icon.py my_app.feb --preview
+
+# Export upscaled 128x128 preview PNG:
+python3 tools/make_icon.py icon.txt -o preview.png --scale 8
 ```
 
 ---

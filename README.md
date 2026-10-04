@@ -100,6 +100,8 @@ feb-sdk/
 │   └── feb.h              <-- Flashiibo C SDK definitions & prototypes
 ├── tools/
 │   ├── feb_build.py       <-- C / Assembly compiler and packager
+│   ├── make_icon.py       <-- 16x16 app icon generator, converter & previewer
+│   ├── feb_icon.py        <-- Icon tool alias
 │   ├── make_feb.py        <-- .feb binary container generator
 │   └── assemble_chip8.py  <-- Virtual machine bytecode assembler
 ├── examples/
@@ -148,6 +150,65 @@ Include the C SDK header in your application:
 
 ---
 
+## App Icon Generation (`make_icon.py`)
+
+Flashiibo `.feb` executables feature a **16×16 monochrome 1-bit icon** (32 bytes) displayed on the device menu. The SDK provides `tools/make_icon.py` (aliased as `tools/feb_icon.py`) to easily create, preview, and convert icons.
+
+### 1. From an Image (PNG, JPG, BMP)
+```bash
+# Convert any image to a 32-byte .bin icon:
+python3 tools/make_icon.py my_icon.png -o icon.bin
+
+# Resize modes: fit (default), crop, or stretch
+python3 tools/make_icon.py artwork.png -o icon.bin --mode crop
+
+# Apply Floyd-Steinberg dithering or invert polarity:
+python3 tools/make_icon.py photo.png -o icon.bin --dither --invert
+```
+
+### 2. From an ASCII Text Grid (.txt)
+Developers can design icons in any text editor without graphic design software:
+```bash
+# Generate an editable 16x16 ASCII template:
+python3 tools/make_icon.py --template icon.txt
+
+# Edit icon.txt using '#' for lit pixels and '.' for unlit pixels, then convert:
+python3 tools/make_icon.py icon.txt -o icon.bin
+```
+
+### 3. Procedural Text / Letter Icons
+Generate a clean retro icon directly from 1 to 4 characters:
+```bash
+# Single bold letter with border:
+python3 tools/make_icon.py --text "A" --border -o icon.bin
+
+# Two characters (e.g. game acronym or numbers):
+python3 tools/make_icon.py --text "20" --border -o icon.bin
+
+# Three characters (3x5 font):
+python3 tools/make_icon.py --text "FEB" -o icon.bin
+```
+
+### 4. Terminal Preview & PNG Upscaling
+```bash
+# Visual Unicode block preview in terminal:
+python3 tools/make_icon.py icon.bin --preview
+
+# Inspect an existing .feb container's embedded icon:
+python3 tools/make_icon.py build/2048.feb --preview
+
+# Export upscaled 128x128 preview image:
+python3 tools/make_icon.py icon.bin -o preview.png --scale 8
+```
+
+### 5. Automatic Build Integration
+When compiling with `tools/feb_build.py`, if an `icon.txt`, `icon.png`, or `icon.bin` file exists alongside `main.c`, it is **automatically detected and embedded** into the `.feb` binary! You can also explicitly specify it:
+```bash
+python3 tools/feb_build.py main.c -o app.feb --title "My App" --icon icon.png
+```
+
+---
+
 ## Creating Your Own App
 
 1. Copy the starter template:
@@ -155,13 +216,14 @@ Include the C SDK header in your application:
    cp -r examples/template examples/my_app
    ```
 2. Edit `examples/my_app/main.c` and customize your logic.
-3. Update `examples/my_app/Makefile` with your app title and author.
-4. Build your `.feb` file:
+3. Customize your app icon by editing `examples/my_app/icon.txt` or providing `icon.png`.
+4. Update `examples/my_app/Makefile` with your app title and author.
+5. Build your `.feb` file:
    ```bash
    cd examples/my_app
    make
    ```
-5. See [docs/c_development_guide.md](docs/c_development_guide.md) for full architectural patterns and best practices.
+6. See [docs/c_development_guide.md](docs/c_development_guide.md) for full architectural patterns and best practices.
 
 ---
 

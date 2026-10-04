@@ -7,6 +7,7 @@ BUILD_TOOL = ../../tools/feb_build.py
 APP_TITLE = Button Test
 APP_AUTHOR = Flashiibo
 APP_VER = 1.0.0
+APP_ICON ?= icon.txt
 
 TARGET = button_test.feb
 
@@ -14,8 +15,8 @@ TARGET = button_test.feb
 
 all: $(TARGET)
 
-$(TARGET): main.c $(BUILD_TOOL) ../../include/feb.h
-	$(PYTHON) $(BUILD_TOOL) main.c -o $(TARGET) --title "$(APP_TITLE)" --author "$(APP_AUTHOR)" --ver "$(APP_VER)"
+$(TARGET): main.c $(BUILD_TOOL) ../../include/feb.h $(APP_ICON)
+	$(PYTHON) $(BUILD_TOOL) main.c -o $(TARGET) --title "$(APP_TITLE)" --author "$(APP_AUTHOR)" --ver "$(APP_VER)" --icon $(APP_ICON)
 
 install: $(TARGET)
 	@mkdir -p ../../build
