@@ -7,7 +7,7 @@
  *   - UP:      Slide Up (Key 0x2)
  *   - DOWN:    Slide Down (Key 0x8)
  *   - BACK:    Slide Left (Key 0x4)
- *   - CONFIRM: Slide Right (Key 0x6)
+ *   - OK:      Slide Right (Key 0x6)
  * Pressing UP and DOWN together guarantees immediate game exit back to the FEB Runner menu.
  */
 
@@ -270,7 +270,7 @@ int main(void) {
 
         bool moved = false;
         switch (key) {
-            case FEB_KEY_RIGHT: /* Flashiibo CONFIRM */
+            case FEB_KEY_RIGHT: /* Flashiibo OK */
                 moved = slide_right();
                 break;
             case FEB_KEY_LEFT:  /* Flashiibo BACK */

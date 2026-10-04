@@ -66,7 +66,7 @@ def generate_button_test_asm():
       UP:      Key 2
       DOWN:    Key 8
       LEFT:    Key 4 (BACK)
-      RIGHT:   Key 6 (CONFIRM)
+      RIGHT:   Key 6 (OK)
     Tracks total presses and per-button counts, saving state to MEM_STATE.
     """
     return """;;; Button Test App for Flashiibo FEB (Super-CHIP 128x64 mode)
@@ -160,7 +160,7 @@ def generate_template_asm():
       UP:      Key 2
       DOWN:    Key 8
       LEFT:    Key 4 (BACK)
-      RIGHT:   Key 6 (CONFIRM)
+      RIGHT:   Key 6 (OK)
     """
     return """;;; Starter Template / Demo App for Flashiibo FEB
 ;;; Demonstrates 4-button directional movement on 128x64 OLED display.
@@ -182,7 +182,7 @@ LOOP:
         call MOVE_DOWN
         skip.ne va, 4           ; LEFT / BACK (FEB_KEY_LEFT = 0x4)
         call MOVE_LEFT
-        skip.ne va, 6           ; RIGHT / CONFIRM (FEB_KEY_RIGHT = 0x6)
+        skip.ne va, 6           ; RIGHT / OK (FEB_KEY_RIGHT = 0x6)
         call MOVE_RIGHT
 
         load i, SPRITE_PLAYER
@@ -231,7 +231,7 @@ def generate_2048_asm():
       UP:      Key 2
       DOWN:    Key 8
       LEFT:    Key 4 (BACK)
-      RIGHT:   Key 6 (CONFIRM)
+      RIGHT:   Key 6 (OK)
     """
     return """;;; 2048 game for CHIP-8 / Flashiibo FEB (Super-CHIP 128x64 mode)
 ;;; Compiled from examples/2048/main.c

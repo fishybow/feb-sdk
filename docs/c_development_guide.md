@@ -25,7 +25,7 @@ Flashiibo Pro Gen3 features a sandboxed virtual runtime for user-installable app
 | **Display** | 128×64 (default Super-CHIP) or 64×32 (legacy) Monochrome OLED | 1-bit per pixel (XOR sprite drawing) |
 | **Frame Rate** | 60 Hz | Hardware timer-driven execution cycle |
 | **Memory Limit** | 4,096 Bytes total address space | Sandboxed from system radio and kernel |
-| **Input Controls** | 4 Physical buttons | UP, DOWN, BACK (Left), CONFIRM (Right) |
+| **Input Controls** | 4 Physical buttons | UP, DOWN, BACK (Left), OK (Right) |
 | **Container Format** | `.feb` (Flashiibo Executable Binary) | 100-byte metadata header + binary bytecode |
 | **Distribution** | VFS `/feb/*.feb` on SPI NOR Flash | Loaded via Companion App over BLE or USB |
 
@@ -39,15 +39,17 @@ Flashiibo devices feature four physical buttons on the device body. In FEB Runne
 
 ```
                   ┌──────────────┐
-                  │   [ UP ]     │  Key: 0x2
+                  │    [ UP ]    │
                   │ (FEB_KEY_UP) │
+                  │   Key: 0x2   │
   ┌───────────────┴──────────────┴───────────────┐
-  │   [ BACK ]                      [ CONFIRM ]  │
+  │   [ BACK ]                         [ OK ]    │
   │ (FEB_KEY_LEFT)                (FEB_KEY_RIGHT)│
   │   Key: 0x4                       Key: 0x6    │
   └───────────────┬──────────────┬───────────────┘
-                  │  [ DOWN ]    │  Key: 0x8
+                  │   [ DOWN ]   │
                   │(FEB_KEY_DOWN)│
+                  │   Key: 0x8   │
                   └──────────────┘
 ```
 
@@ -56,7 +58,7 @@ Flashiibo devices feature four physical buttons on the device body. In FEB Runne
 | **UP** | `FEB_KEY_UP` | `0x2` | Move cursor up / Jump / Rotate |
 | **DOWN** | `FEB_KEY_DOWN` | `0x8` | Move cursor down / Crouch / Soft drop |
 | **BACK** | `FEB_KEY_LEFT` / `FEB_KEY_BACK` | `0x4` | Move cursor left / Navigate back |
-| **CONFIRM** | `FEB_KEY_RIGHT` / `FEB_KEY_CONFIRM` | `0x6` | Move cursor right / Select / Action |
+| **OK** | `FEB_KEY_RIGHT` / `FEB_KEY_OK` | `0x6` | Move cursor right / Select / Action |
 
 ### 2.2 System Exit Contract (UP + DOWN Chord)
 
@@ -223,4 +225,4 @@ clean:
 1. Connect your Flashiibo Pro Gen3 to your computer or phone via USB or Web Bluetooth.
 2. In the Flashiibo companion application or Web Tool, open the File Manager.
 3. Upload your `.feb` file into the `/feb/` folder on the device flash storage.
-4. On your Flashiibo device, enter **FEB Runner** from the main menu, select your game, and press **CONFIRM** to launch!
+4. On your Flashiibo device, enter **FEB Runner** from the main menu, select your game, and press **OK** to launch!

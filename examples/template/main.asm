@@ -5,7 +5,7 @@
 ;;;   UP:      0x2 (FEB_KEY_UP)
 ;;;   DOWN:    0x8 (FEB_KEY_DOWN)
 ;;;   LEFT:    0x4 (FEB_KEY_LEFT / BACK)
-;;;   RIGHT:   0x6 (FEB_KEY_RIGHT / CONFIRM)
+;;;   RIGHT:   0x6 (FEB_KEY_RIGHT / OK)
 
 START:
         high                    ; Enable 128x64 high-resolution mode

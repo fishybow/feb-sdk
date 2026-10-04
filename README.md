@@ -34,15 +34,17 @@ Flashiibo Gen3 features four physical buttons:
 
 ```
                   ┌──────────────┐
-                  │   [ UP ]     │  Key: 0x2
+                  │    [ UP ]    │
                   │ (FEB_KEY_UP) │
+                  │   Key: 0x2   │
   ┌───────────────┴──────────────┴───────────────┐
-  │   [ BACK ]                      [ CONFIRM ]  │
+  │   [ BACK ]                         [ OK ]    │
   │ (FEB_KEY_LEFT)                (FEB_KEY_RIGHT)│
   │   Key: 0x4                       Key: 0x6    │
   └───────────────┬──────────────┬───────────────┘
-                  │  [ DOWN ]    │  Key: 0x8
+                  │   [ DOWN ]   │
                   │(FEB_KEY_DOWN)│
+                  │   Key: 0x8   │
                   └──────────────┘
 ```
 
@@ -51,7 +53,7 @@ Flashiibo Gen3 features four physical buttons:
 | **UP** | `FEB_KEY_UP` | `0x2` | Directional UP / Jump / Rotate |
 | **DOWN** | `FEB_KEY_DOWN` | `0x8` | Directional DOWN / Crouch |
 | **BACK** | `FEB_KEY_LEFT` / `FEB_KEY_BACK` | `0x4` | Directional LEFT / Cancel |
-| **CONFIRM** | `FEB_KEY_RIGHT` / `FEB_KEY_CONFIRM` | `0x6` | Directional RIGHT / Select |
+| **OK** | `FEB_KEY_RIGHT` / `FEB_KEY_OK` | `0x6` | Directional RIGHT / Select |
 
 > [!IMPORTANT]
 > **Emergency Exit Chord:** Pressing **UP** and **DOWN** simultaneously guarantees immediate return to the Flashiibo device menu. Long-press on BACK is NOT used as an exit trigger, making BACK completely safe for gameplay movement.
@@ -171,7 +173,7 @@ Include the C SDK header in your application:
 1. Connect your Flashiibo Pro Gen3 to your computer or smartphone (USB or Web Bluetooth).
 2. Open the Flashiibo companion application or Web Tool.
 3. Upload your `.feb` binary into the `/feb/` folder on device storage.
-4. On your Flashiibo, scroll to **FEB Runner**, select your app, and press **CONFIRM**!
+4. On your Flashiibo, scroll to **FEB Runner**, select your app, and press **OK**!
 
 ---
 

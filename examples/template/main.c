@@ -9,7 +9,7 @@
  *   - UP:      Move Up (FEB_KEY_UP = 0x2)
  *   - DOWN:    Move Down (FEB_KEY_DOWN = 0x8)
  *   - BACK:    Move Left (FEB_KEY_LEFT = 0x4)
- *   - CONFIRM: Move Right (FEB_KEY_RIGHT = 0x6)
+ *   - OK:      Move Right (FEB_KEY_RIGHT = 0x6)
  *
  * Pressing UP and DOWN simultaneously exits immediately back to the device menu.
  */
