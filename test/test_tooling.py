@@ -175,7 +175,7 @@ class TestFebBuild(unittest.TestCase):
                 version="1.0.0",
                 payload=bytecode
             )
-            self.assertEqual(len(feb_data), 96 + 623)
+            self.assertEqual(len(feb_data), 96 + 1184)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
@@ -190,7 +190,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "button_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 634)
+        self.assertEqual(len(bytecode), 866)
 
     def test_build_features_demo_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "features_demo", "main.c")
@@ -202,7 +202,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "quest", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 2100)
+        self.assertEqual(len(bytecode), 353)
 
 if __name__ == "__main__":
     unittest.main()

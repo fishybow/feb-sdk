@@ -385,11 +385,21 @@ class CCompiler:
             self.parse_global_or_function()
 
     def parse_type_declaration(self):
-        # Skip typedefs / struct definitions
-        while self.peek().type != TOK_EOF and self.peek().val != ";":
-            self.consume()
-        if self.peek().val == ";":
-            self.consume(";")
+        # Skip typedefs / struct definitions, respecting nested braces
+        depth = 0
+        while self.peek().type != TOK_EOF:
+            val = self.peek().val
+            if val == "{":
+                depth += 1
+                self.consume("{")
+            elif val == "}":
+                depth -= 1
+                self.consume("}")
+            elif val == ";" and depth == 0:
+                self.consume(";")
+                break
+            else:
+                self.consume()
 
     def skip_type_specifiers(self):
         while self.peek().val in ("static", "const", "volatile", "unsigned", "signed", "extern"):
@@ -1283,7 +1293,7 @@ class CCompiler:
         # ---------------------------------------------------------------------
         # Flashiibo FEB SDK Built-in APIs
         # ---------------------------------------------------------------------
-        if func_name == "feb_set_high_res":
+        if func_name in ("feb_set_high_res", "feb_set_hires"):
             # feb_set_high_res(bool enable)
             if args and args[0].get("val") == 0:
                 out.append("        low")
@@ -1308,11 +1318,15 @@ class CCompiler:
             return dest_reg
 
         if func_name == "feb_draw_sprite":
-            # feb_draw_sprite(x, y, sprite, height)
+            # feb_draw_sprite(x, y, sprite, height) or (x, y, height, sprite)
             self.compile_expr_into(args[0], "vc", ctx)
             self.compile_expr_into(args[1], "vd", ctx)
-            sprite_label = args[2]["name"].upper()
-            h = args[3]["val"] if args[3]["type"] == "num" else 8
+            if args[2].get("type") == "ident":
+                sprite_label = args[2]["name"].upper()
+                h = args[3]["val"] if len(args) > 3 and args[3].get("type") == "num" else 8
+            else:
+                sprite_label = args[3]["name"].upper() if len(args) > 3 and "name" in args[3] else "SPRITE"
+                h = args[2]["val"] if args[2].get("type") == "num" else 8
             out.append(f"        load i, {sprite_label}")
             out.append(f"        draw vc, vd, {h}")
             if dest_reg != "vf":
