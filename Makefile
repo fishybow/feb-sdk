@@ -41,7 +41,7 @@ $(EXAMPLES):
 
 test:
 	@echo "=== Running FEB Tooling & Build Verification Tests ==="
-	@python3 -m unittest discover -s test -p "test_*.py" -v || python3 tools/test_tooling.py
+	@python3 -m unittest discover -s test -p "test_*.py" -v
 
 publish:
 	@echo "=== Publishing develop branch to main ==="

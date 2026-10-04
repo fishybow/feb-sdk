@@ -224,6 +224,21 @@ def assemble(asm_text):
                 y = parse_reg(args[1])
                 binary.extend(((0x80 | x), ((y << 4) | 0x03)))
                 pc += 2
+            elif mnem in ("shr", "sar"):
+                x = parse_reg(args[0])
+                y = parse_reg(args[1]) if len(args) > 1 and is_reg(args[1]) else x
+                binary.extend(((0x80 | x), ((y << 4) | 0x06)))
+                pc += 2
+            elif mnem == "shl":
+                x = parse_reg(args[0])
+                y = parse_reg(args[1]) if len(args) > 1 and is_reg(args[1]) else x
+                binary.extend(((0x80 | x), ((y << 4) | 0x0E)))
+                pc += 2
+            elif mnem == "subn":
+                x = parse_reg(args[0])
+                y = parse_reg(args[1])
+                binary.extend(((0x80 | x), ((y << 4) | 0x07)))
+                pc += 2
             elif mnem == "rnd":
                 x = parse_reg(args[0])
                 mask = parse_val(args[1], labels) & 0xFF
