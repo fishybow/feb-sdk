@@ -402,15 +402,21 @@ __DIVMOD8_NO_SUB:
                         out.append(f"        load v0, {dest_reg}")
                         out.append("        save v0")
                     else:
+                        val_reg = dest_reg
+                        if dest_reg == "v0":
+                            out.append("        load ve, v0")
+                            val_reg = "ve"
                         out.append(f"        load i, {label}")
                         out.append("        restore v0")
-                        if op == "+=": out.append(f"        add v0, {dest_reg}")
-                        elif op == "-=": out.append(f"        sub v0, {dest_reg}")
-                        elif op == "&=": out.append(f"        and v0, {dest_reg}")
-                        elif op == "|=": out.append(f"        or v0, {dest_reg}")
-                        elif op == "^=": out.append(f"        xor v0, {dest_reg}")
+                        if op == "+=": out.append(f"        add v0, {val_reg}")
+                        elif op == "-=": out.append(f"        sub v0, {val_reg}")
+                        elif op == "&=": out.append(f"        and v0, {val_reg}")
+                        elif op == "|=": out.append(f"        or v0, {val_reg}")
+                        elif op == "^=": out.append(f"        xor v0, {val_reg}")
                         out.append(f"        load i, {label}")
                         out.append("        save v0")
+                        if dest_reg != "v0":
+                            out.append(f"        load {dest_reg}, v0")
             elif target["type"] == "field":
                 struct_target = target["target"]
                 field = target["field"]
@@ -426,15 +432,21 @@ __DIVMOD8_NO_SUB:
                             out.append(f"        load v0, {dest_reg}")
                             out.append("        save v0")
                         else:
+                            val_reg = dest_reg
+                            if dest_reg == "v0":
+                                out.append("        load ve, v0")
+                                val_reg = "ve"
                             out.append(f"        load i, {loc_str}")
                             out.append("        restore v0")
-                            if op == "+=": out.append(f"        add v0, {dest_reg}")
-                            elif op == "-=": out.append(f"        sub v0, {dest_reg}")
-                            elif op == "&=": out.append(f"        and v0, {dest_reg}")
-                            elif op == "|=": out.append(f"        or v0, {dest_reg}")
-                            elif op == "^=": out.append(f"        xor v0, {dest_reg}")
+                            if op == "+=": out.append(f"        add v0, {val_reg}")
+                            elif op == "-=": out.append(f"        sub v0, {val_reg}")
+                            elif op == "&=": out.append(f"        and v0, {val_reg}")
+                            elif op == "|=": out.append(f"        or v0, {val_reg}")
+                            elif op == "^=": out.append(f"        xor v0, {val_reg}")
                             out.append(f"        load i, {loc_str}")
                             out.append("        save v0")
+                            if dest_reg != "v0":
+                                out.append(f"        load {dest_reg}, v0")
             elif target["type"] == "index":
                 # Array assignment: arr[idx] = val
                 arr_name = target["target"]["name"].upper()

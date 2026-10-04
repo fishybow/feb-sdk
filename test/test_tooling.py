@@ -363,7 +363,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 1841)
+        self.assertEqual(len(bytecode), 1845)
 
     def test_modular_compiler_equivalence(self):
         import compiler
@@ -533,6 +533,36 @@ class TestToolingGuards(unittest.TestCase):
                 steps += 1
             self.assertTrue(sim.exited)
             self.assertEqual(sim.v[0], 92)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_guard_global_augmented_assignment_preserves_rhs(self):
+        """Guard: Global variable augmented assignment (+=, -=) preserves RHS register."""
+        c_code = """
+        #include <feb.h>
+        static uint8_t g_val = 20;
+        int main(void) {
+            uint8_t delta = 5;
+            g_val += delta; // 25
+            uint8_t sub_val = 3;
+            g_val -= sub_val; // 22
+            return g_val;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 1000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 22)
         finally:
             if os.path.exists(p):
                 os.remove(p)
