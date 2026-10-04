@@ -644,6 +644,30 @@ __DIVMOD8_NO_SUB:
                     out.append(f"        add {dest_reg}, vb")
                 return dest_reg
 
+            if op == "&&":
+                lbl_false = self.new_label("AND_FALSE")
+                lbl_end = self.new_label("AND_END")
+                self.compile_cond_branch(expr["left"], False, lbl_false, ctx)
+                self.compile_cond_branch(expr["right"], False, lbl_false, ctx)
+                out.append(f"        load {dest_reg}, 1")
+                out.append(f"        jump {lbl_end}")
+                out.append(f"{lbl_false}:")
+                out.append(f"        load {dest_reg}, 0")
+                out.append(f"{lbl_end}:")
+                return dest_reg
+
+            if op == "||":
+                lbl_true = self.new_label("OR_TRUE")
+                lbl_end = self.new_label("OR_END")
+                self.compile_cond_branch(expr["left"], True, lbl_true, ctx)
+                self.compile_cond_branch(expr["right"], True, lbl_true, ctx)
+                out.append(f"        load {dest_reg}, 0")
+                out.append(f"        jump {lbl_end}")
+                out.append(f"{lbl_true}:")
+                out.append(f"        load {dest_reg}, 1")
+                out.append(f"{lbl_end}:")
+                return dest_reg
+
             # Compile left into dest_reg
             self.compile_expr_into(expr["left"], dest_reg, ctx)
             # Compile right into temporary vb
@@ -690,19 +714,22 @@ __DIVMOD8_NO_SUB:
 
         if etype == "unary":
             op = expr["op"]
-            self.compile_expr_into(expr["expr"], dest_reg, ctx)
             if op == "!":
-                out.append(f"        load v0, 0")
-                out.append(f"        skip.ne {dest_reg}, 0")
-                out.append(f"        load v0, 1")
-                if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
+                self.compile_expr_into(expr["expr"], "va", ctx)
+                out.append(f"        load {dest_reg}, 0")
+                out.append("        skip.ne va, 0")
+                out.append(f"        load {dest_reg}, 1")
+                return dest_reg
             elif op == "-":
-                out.append(f"        load v0, 0")
-                out.append(f"        sub v0, {dest_reg}")
-                if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
+                self.compile_expr_into(expr["expr"], "va", ctx)
+                out.append(f"        load {dest_reg}, 0")
+                out.append(f"        sub {dest_reg}, va")
+                return dest_reg
             elif op == "~":
-                out.append(f"        load v0, 255")
-                out.append(f"        xor {dest_reg}, v0")
+                self.compile_expr_into(expr["expr"], dest_reg, ctx)
+                out.append("        load vb, 255")
+                out.append(f"        xor {dest_reg}, vb")
+                return dest_reg
             return dest_reg
 
         return dest_reg
@@ -714,6 +741,32 @@ __DIVMOD8_NO_SUB:
     def compile_cond_branch(self, cond, jump_if_true, target_label, ctx):
         out = ctx["out"]
         ctype = cond["type"]
+
+        if ctype == "unary" and cond.get("op") == "!":
+            self.compile_cond_branch(cond["expr"], not jump_if_true, target_label, ctx)
+            return
+
+        if ctype == "binary" and cond["op"] == "&&":
+            if jump_if_true:
+                lbl_skip = self.new_label("AND_SKIP")
+                self.compile_cond_branch(cond["left"], False, lbl_skip, ctx)
+                self.compile_cond_branch(cond["right"], True, target_label, ctx)
+                out.append(f"{lbl_skip}:")
+            else:
+                self.compile_cond_branch(cond["left"], False, target_label, ctx)
+                self.compile_cond_branch(cond["right"], False, target_label, ctx)
+            return
+
+        if ctype == "binary" and cond["op"] == "||":
+            if jump_if_true:
+                self.compile_cond_branch(cond["left"], True, target_label, ctx)
+                self.compile_cond_branch(cond["right"], True, target_label, ctx)
+            else:
+                lbl_skip = self.new_label("OR_SKIP")
+                self.compile_cond_branch(cond["left"], True, lbl_skip, ctx)
+                self.compile_cond_branch(cond["right"], False, target_label, ctx)
+                out.append(f"{lbl_skip}:")
+            return
 
         if ctype == "binary" and cond["op"] in ("==", "!=", "<", "<=", ">", ">="):
             op = cond["op"]

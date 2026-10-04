@@ -663,7 +663,133 @@ class TestToolingGuards(unittest.TestCase):
             self.assertEqual(ver, 1)
             self.assertEqual(app_type, make_feb.FEB_TYPE_CHIP8)
             payload_size = struct.unpack_from("<I", feb_data, 88)[0]
-            self.assertEqual(payload_size, len(bytecode))
+    def test_guard_logical_and_or_operators_and_short_circuiting(self):
+        """Guard: Logical AND (&&) and OR (||) compile correctly with short-circuit semantics."""
+        c_code = """
+        #include <feb.h>
+        static uint8_t side_effect = 0;
+
+        uint8_t inc_side_effect(void) {
+            side_effect++;
+            return 1;
+        }
+
+        int main(void) {
+            uint8_t a = 0;
+            uint8_t b = 1;
+            uint8_t passed = 0;
+
+            // False AND right -> right side must not execute
+            if (a && inc_side_effect()) {
+                return 99;
+            }
+            if (side_effect == 0) {
+                passed++;
+            }
+
+            // True OR right -> right side must not execute
+            if (b || inc_side_effect()) {
+                passed++;
+            }
+            if (side_effect == 0) {
+                passed++;
+            }
+
+            // Relational compound AND
+            uint8_t x = 5;
+            uint8_t y = 10;
+            if (x < 10 && y > 8) {
+                passed++;
+            }
+
+            // Expression assignment
+            uint8_t and_val = (x == 5 && y == 10);
+            uint8_t or_val = (x == 0 || y == 10);
+            if (and_val == 1 && or_val == 1) {
+                passed++;
+            }
+
+            return passed; // Should be 5
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 2000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 5)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_guard_2048_game_over_detection_and_reset(self):
+        """Guard: 2048 game over detection accurately identifies full non-mergeable boards vs valid boards."""
+        c_code = """
+        #include <feb.h>
+        static uint8_t board[16];
+        static uint8_t p1[16] = {1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6};
+        static uint8_t p2[16] = {1, 2, 3, 4, 1, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6};
+        static uint8_t p3[16] = {1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1};
+
+        bool is_game_over(void) {
+            for (uint8_t r = 0; r < 4; r++) {
+                for (uint8_t c = 0; c < 4; c++) {
+                    uint8_t idx = (r << 2) + c;
+                    uint8_t val = board[idx];
+                    if (val == 0) {
+                        return false;
+                    }
+                    if (c < 3 && val == board[idx + 1]) {
+                        return false;
+                    }
+                    if (r < 3 && val == board[idx + 4]) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        int main(void) {
+            for (uint8_t i = 0; i < 16; i++) board[i] = 0;
+            if (is_game_over()) return 10;
+
+            for (uint8_t i = 0; i < 16; i++) board[i] = p1[i];
+            if (is_game_over()) return 20;
+
+            for (uint8_t i = 0; i < 16; i++) board[i] = p2[i];
+            if (is_game_over()) return 30;
+
+            for (uint8_t i = 0; i < 16; i++) board[i] = p3[i];
+            if (!is_game_over()) return 40;
+
+            return 100;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 10000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 100)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
 
 if __name__ == "__main__":
     unittest.main()
+

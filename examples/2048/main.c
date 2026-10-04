@@ -206,6 +206,38 @@ static void new_game(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Game Over Detection & Screen
+ * ------------------------------------------------------------------------- */
+
+static bool is_game_over(void) {
+    for (uint8_t r = 0; r < 4; r++) {
+        for (uint8_t c = 0; c < 4; c++) {
+            uint8_t idx = (r << 2) + c;
+            uint8_t val = board[idx];
+            if (val == 0) {
+                return false;
+            }
+            if (c < 3 && val == board[idx + 1]) {
+                return false;
+            }
+            if (r < 3 && val == board[idx + 4]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+static void draw_game_over(void) {
+    feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+    feb_fill_rect(34, 15, 60, 34);
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+    feb_draw_rect(34, 15, 60, 34);
+    feb_draw_string(37, 20, "GAME OVER", FEB_FONT_6X10);
+    feb_draw_string(42, 35, "OK: Restart", FEB_FONT_4X6);
+}
+
+/* -------------------------------------------------------------------------
  * Main Entry Point
  * ------------------------------------------------------------------------- */
 
@@ -224,14 +256,31 @@ int main(void) {
     place_random_tile();
     render_all();
 
+    uint8_t game_over = 0;
+
     while (1) {
         uint8_t key = feb_wait_key();
-        bool moved = slide(key);
-        if (moved) {
-            place_random_tile();
-            render_all();
+        if (game_over != 0) {
+            if (key == FEB_KEY_OK) {
+                new_game();
+                place_random_tile();
+                place_random_tile();
+                render_all();
+                game_over = 0;
+            }
+        } else {
+            bool moved = slide(key);
+            if (moved) {
+                place_random_tile();
+                render_all();
+                if (is_game_over()) {
+                    game_over = 1;
+                    draw_game_over();
+                }
+            }
         }
     }
 
     return 0;
 }
+
