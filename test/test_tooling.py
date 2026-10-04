@@ -176,7 +176,7 @@ class TestAssembleChip8(unittest.TestCase):
         asm = feb_build.compile_c_to_asm(c_path)
         code = assemble_chip8.assemble(asm)
         self.assertGreater(len(code), 50)
-        self.assertEqual(len(code), 158)
+        self.assertEqual(len(code), 154)
 
     def test_assemble_schip_instructions(self):
         asm = """
@@ -318,7 +318,8 @@ class TestFebBuild(unittest.TestCase):
                 version="1.0.0",
                 payload=bytecode
             )
-            self.assertEqual(len(feb_data), 96 + 1030)
+            self.assertEqual(len(feb_data), 96 + len(bytecode))
+            self.assertLess(len(bytecode), 2500)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
@@ -327,19 +328,19 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "template", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 158)
+        self.assertEqual(len(bytecode), 154)
 
     def test_build_button_demo_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "button_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 906)
+        self.assertEqual(len(bytecode), 1008)
 
     def test_build_features_demo_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "features_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 375)
+        self.assertEqual(len(bytecode), 396)
 
     def test_modular_compiler_equivalence(self):
         import compiler
@@ -564,6 +565,48 @@ class TestToolingGuards(unittest.TestCase):
                 steps += 1
             self.assertTrue(sim.exited)
             self.assertEqual(sim.v[0], 200)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_guard_call_argument_complex_expressions_preserve_scratch_registers(self):
+        """Guard: Complex expressions in function/built-in arguments do not clobber other argument registers."""
+        c_code = """
+        #include <feb.h>
+        static uint8_t res_x = 0;
+        static uint8_t res_y = 0;
+        static uint8_t res_z = 0;
+
+        void helper(uint8_t a, uint8_t b, uint8_t c) {
+            res_x = a;
+            res_y = b;
+            res_z = c;
+        }
+
+        int main(void) {
+            uint8_t x = 40;
+            uint8_t y = 20;
+            uint8_t val = 5;
+            helper(x, y, val - 1);
+            if (res_x == 40 && res_y == 20 && res_z == 4) {
+                return 100;
+            }
+            return 0;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 2000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 100, f"Expected 100 but got {sim.v[0]} (res_y was likely clobbered)")
         finally:
             if os.path.exists(p):
                 os.remove(p)

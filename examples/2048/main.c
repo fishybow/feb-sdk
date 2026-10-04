@@ -9,129 +9,98 @@
  *   - BACK:    Slide Left (Key 0x4)
  *   - OK:      Slide Right (Key 0x6)
  * Pressing UP + DOWN together guarantees immediate game exit back to the FEB Runner menu.
+ *
+ * Built with pure C using Flashiibo FEB SDK geometry lines and typography fonts.
  */
 
 #include "../../include/feb.h"
 
 #define BOARD_SIZE    16
 
-/* Grid screen placement: 4x4 cells of 16x16 pixels each centered on 128x64 display */
-#define GRID_ORIGIN_X 32
-#define GRID_ORIGIN_Y  0
-#define CELL_SIZE     16
-#define TILE_OFFSET_X  6
-#define TILE_OFFSET_Y  5
-
-/* 16x16 Grid line sprites (2 bytes per row * 16 rows = 32 bytes) */
-static const uint8_t SPRITE_GRID_16[32] = {
-    0xFF, 0xFF,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00
-};
-
-static const uint8_t SPRITE_GRID_BOTTOM_16[32] = {
-    0xFF, 0xFF,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00,
-    0xFF, 0xFF
-};
-
-static const uint8_t SPRITE_GRID_RIGHT_16[32] = {
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
-    0x80, 0x00, 0x80, 0x00, 0x80, 0x00
-};
-
-/* 8x5 "HI" banner sprite for high score label */
-static const uint8_t SPRITE_HI[5] = {
-    0xAE, 0xA4, 0xE4, 0xA4, 0xAE
-};
-
 /* Board state: 16 tiles (4x4)
  *   0: Empty cell
- *   1: Tile "2"    (displays hex digit '0')
- *   2: Tile "4"    (displays hex digit '1')
- *   3: Tile "8"    (displays hex digit '2')
+ *   1: Tile "2"
+ *   2: Tile "4"
+ *   3: Tile "8"
  *  ...
- *  10: Tile "1024" (displays hex digit '9')
- *  11: Tile "2048" (displays hex digit 'A' - TARGET WIN)
+ *  10: Tile "1024" (displays "1K")
+ *  11: Tile "2048" (displays "2K" - TARGET WIN)
  */
 static uint8_t board[BOARD_SIZE];
 static uint8_t new_board[BOARD_SIZE];
 
-/* Persistent high score: highest tile level achieved (1..11) saved in /feb/saves/2048.sav */
+/* Persistent high score: highest tile level achieved (1..11) saved in companion .sav */
 static uint8_t best_tile = 0;
 
 /* -------------------------------------------------------------------------
- * Board Rendering
+ * Board Rendering with Geometry and Typography
  * ------------------------------------------------------------------------- */
 
 static void draw_grid(void) {
-    uint8_t k = 0;
-    uint8_t x = GRID_ORIGIN_X;
-    uint8_t y = GRID_ORIGIN_Y;
+    /* Vertical grid lines: 5 lines bounding 4 columns of 16px */
+    feb_draw_vline(32, 0, 64);
+    feb_draw_vline(48, 0, 64);
+    feb_draw_vline(64, 0, 64);
+    feb_draw_vline(80, 0, 64);
+    feb_draw_vline(96, 0, 64);
 
-    while (k != BOARD_SIZE) {
-        if (y == 48) {
-            feb_draw_sprite16(x, y, SPRITE_GRID_BOTTOM_16);
-        } else {
-            feb_draw_sprite16(x, y, SPRITE_GRID_16);
-        }
-
-        k++;
-        x += CELL_SIZE;
-        if (x == 96) {
-            feb_draw_sprite16(x, y, SPRITE_GRID_RIGHT_16);
-            x = GRID_ORIGIN_X;
-            y += CELL_SIZE;
-        }
-    }
+    /* Horizontal grid lines: 5 lines bounding 4 rows of 16px */
+    feb_draw_hline(32, 0, 65);
+    feb_draw_hline(32, 16, 65);
+    feb_draw_hline(32, 32, 65);
+    feb_draw_hline(32, 48, 65);
+    feb_draw_hline(32, 63, 65);
 }
 
-static void draw_board(void) {
-    uint8_t k = 0;
-    uint8_t x = GRID_ORIGIN_X + TILE_OFFSET_X;
-    uint8_t y = GRID_ORIGIN_Y + TILE_OFFSET_Y;
-
-    while (k != BOARD_SIZE) {
-        uint8_t val = board[k];
-        if (val > 0) {
-            feb_draw_digit(x, y, val - 1);
-        }
-
-        k++;
-        x += CELL_SIZE;
-        if (x == 102) {
-            x = GRID_ORIGIN_X + TILE_OFFSET_X;
-            y += CELL_SIZE;
-        }
-    }
+static void draw_tile(uint8_t x, uint8_t y, uint8_t val) {
+    if (val == 0) return;
+    if (val == 1)       feb_draw_string(x + 6, y + 5, "2", FEB_FONT_4X6);
+    else if (val == 2)  feb_draw_string(x + 6, y + 5, "4", FEB_FONT_4X6);
+    else if (val == 3)  feb_draw_string(x + 6, y + 5, "8", FEB_FONT_4X6);
+    else if (val == 4)  feb_draw_string(x + 4, y + 5, "16", FEB_FONT_4X6);
+    else if (val == 5)  feb_draw_string(x + 4, y + 5, "32", FEB_FONT_4X6);
+    else if (val == 6)  feb_draw_string(x + 4, y + 5, "64", FEB_FONT_4X6);
+    else if (val == 7)  feb_draw_string(x + 2, y + 5, "128", FEB_FONT_4X6);
+    else if (val == 8)  feb_draw_string(x + 2, y + 5, "256", FEB_FONT_4X6);
+    else if (val == 9)  feb_draw_string(x + 2, y + 5, "512", FEB_FONT_4X6);
+    else if (val == 10) feb_draw_string(x + 4, y + 5, "1K", FEB_FONT_4X6);
+    else if (val == 11) feb_draw_string(x + 4, y + 5, "2K", FEB_FONT_4X6);
+    else                feb_draw_string(x + 4, y + 5, "4K", FEB_FONT_4X6);
 }
 
 static void draw_best(void) {
-    feb_draw_sprite(12, 20, SPRITE_HI, 5);
+    feb_draw_string(10, 14, "HI", FEB_FONT_6X10);
+    feb_draw_hline(6, 25, 20);
     if (best_tile > 0) {
-        feb_draw_digit(13, 28, best_tile - 1);
+        draw_tile(6, 28, best_tile);
     }
 }
 
-static void update_best(uint8_t val) {
-    if (val > best_tile) {
-        if (best_tile > 0) {
-            feb_draw_digit(13, 28, best_tile - 1);
+static void draw_sidebar(void) {
+    feb_draw_string(101, 14, "2048", FEB_FONT_6X10);
+    feb_draw_hline(101, 25, 24);
+}
+
+static void draw_board(void) {
+    for (uint8_t r = 0; r < 4; r++) {
+        for (uint8_t c = 0; c < 4; c++) {
+            uint8_t idx = (r << 2) + c;
+            uint8_t val = board[idx];
+            if (val > 0) {
+                uint8_t cx = 32 + (c << 4);
+                uint8_t cy = r << 4;
+                draw_tile(cx, cy, val);
+            }
         }
-        best_tile = val;
-        feb_draw_digit(13, 28, best_tile - 1);
-        feb_save_flags(&best_tile, 1);
     }
+}
+
+static void render_all(void) {
+    feb_clear_screen();
+    draw_grid();
+    draw_best();
+    draw_sidebar();
+    draw_board();
 }
 
 /* -------------------------------------------------------------------------
@@ -150,15 +119,19 @@ static uint8_t get_idx(uint8_t key, uint8_t line, uint8_t pos) {
         r = 3 - pos;
         c = line;
     }
-    return (r * 4) + c;
+    return (r << 2) + c;
 }
 
 static bool slide(uint8_t key) {
+    if (key != FEB_KEY_LEFT && key != FEB_KEY_RIGHT && key != FEB_KEY_UP && key != FEB_KEY_DOWN) {
+        return false;
+    }
+
     bool moved = false;
-    for (uint8_t line = 0; line != 4; line++) {
+    for (uint8_t line = 0; line < 4; line++) {
         uint8_t write_pos = 0;
         uint8_t last_val = 0;
-        for (uint8_t pos = 0; pos != 4; pos++) {
+        for (uint8_t pos = 0; pos < 4; pos++) {
             uint8_t target_idx = get_idx(key, line, pos);
             uint8_t val = board[target_idx];
             if (val == 0) continue;
@@ -168,7 +141,10 @@ static bool slide(uint8_t key) {
                 new_board[target_idx] = val + 1;
                 last_val = 0;
                 moved = true;
-                update_best(val + 1);
+                if (val + 1 > best_tile) {
+                    best_tile = val + 1;
+                    feb_save_flags(&best_tile, 1);
+                }
             } else {
                 last_val = val;
                 target_idx = get_idx(key, line, write_pos);
@@ -181,7 +157,7 @@ static bool slide(uint8_t key) {
         }
     }
 
-    for (uint8_t pos = 0; pos != BOARD_SIZE; pos++) {
+    for (uint8_t pos = 0; pos < BOARD_SIZE; pos++) {
         board[pos] = new_board[pos];
         new_board[pos] = 0;
     }
@@ -198,25 +174,32 @@ static void place_random_tile(void) {
         tile_val = 2;
     }
 
-    uint8_t target = feb_rand(15);
-    uint8_t scans = 32;
-    uint8_t idx = 0;
+    uint8_t empty_count = 0;
+    for (uint8_t i = 0; i < BOARD_SIZE; i++) {
+        if (board[i] == 0) {
+            empty_count++;
+        }
+    }
+    if (empty_count == 0) return;
 
-    while (scans != 0) {
-        scans--;
-        if (board[idx] == 0) {
+    uint8_t target = feb_rand(15);
+    while (target >= empty_count) {
+        target -= empty_count;
+    }
+
+    for (uint8_t i = 0; i < BOARD_SIZE; i++) {
+        if (board[i] == 0) {
             if (target == 0) {
-                board[idx] = tile_val;
+                board[i] = tile_val;
                 return;
             }
             target--;
         }
-        idx = (idx + 1) & 15;
     }
 }
 
 static void new_game(void) {
-    for (uint8_t i = 0; i != BOARD_SIZE; i++) {
+    for (uint8_t i = 0; i < BOARD_SIZE; i++) {
         board[i] = 0;
         new_board[i] = 0;
     }
@@ -228,28 +211,25 @@ static void new_game(void) {
 
 int main(void) {
     feb_set_high_res(true);
-    feb_clear_screen();
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
 
-    /* Load persistent high score from companion /feb/saves/2048.sav */
+    /* Load persistent high score from companion .sav */
     feb_load_flags(&best_tile, 1);
     if (best_tile > 15) {
         best_tile = 0;
     }
 
     new_game();
-    draw_grid();
-    draw_best();
     place_random_tile();
     place_random_tile();
+    render_all();
 
     while (1) {
-        draw_board();
         uint8_t key = feb_wait_key();
-        draw_board(); /* XOR erase board before sliding */
-
         bool moved = slide(key);
         if (moved) {
             place_random_tile();
+            render_all();
         }
     }
 

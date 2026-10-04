@@ -16,6 +16,7 @@ class CodeGenerator:
 
         self.label_counter = 0
         self.frame_buffers = set()
+        self.call_arg_buffers = set()
         self.needs_mul = False
         self.needs_div = False
         self.needs_mod = False
@@ -60,6 +61,14 @@ class CodeGenerator:
                 out.append("        .ds 16")
             out.append("")
 
+        # Call argument scratch buffers
+        if self.call_arg_buffers:
+            out.append(";;; Call Argument Scratch Buffers")
+            for bname in sorted(self.call_arg_buffers):
+                out.append(f"{bname}:")
+                out.append("        .byte 0x00")
+            out.append("")
+
         # Emit globals
         if self.globals:
             out.append(";;; Global Variables and Memory Tables")
@@ -82,49 +91,45 @@ class CodeGenerator:
                     out.append(f"        .byte 0x{g['value'] & 0xFF:02x}")
             out.append("")
 
-        # Emit runtime math helpers if needed
+        # Emit runtime math helpers if needed (using only scratch registers v0, va, vb, vc, vd, ve, vf)
         if self.needs_mul:
             out.append(""";;; 8-Bit Software Multiplication Helper
 __MUL8:
         load v0, 0
-        load v9, 8
         load vc, 1
 __MUL8_LOOP:
+        skip.ne vb, 0
+        ret
         load ve, vb
         and ve, vc
         skip.eq ve, 0
         add v0, va
         add va, va
         shr vb
-        sub v9, 1
-        skip.eq v9, 0
         jump __MUL8_LOOP
-        ret
 """)
         if self.needs_div or self.needs_mod:
             out.append(""";;; 8-Bit Software Division & Modulo Helper
 __DIVMOD8:
         load v0, 0
-        load v1, 0
-        load v9, 8
+        load vd, 0
         load vc, 128
 __DIVMOD8_LOOP:
         add v0, v0
-        add v1, v1
+        add vd, vd
         load ve, va
         and ve, vc
         skip.eq ve, 0
-        add v1, 1
-        add va, va
-        load ve, v1
+        add vd, 1
+        load ve, vd
         sub ve, vb
         skip.eq vf, 0
         jump __DIVMOD8_NO_SUB
-        sub v1, vb
+        sub vd, vb
         add v0, 1
 __DIVMOD8_NO_SUB:
-        sub v9, 1
-        skip.eq v9, 0
+        shr vc
+        skip.eq vc, 0
         jump __DIVMOD8_LOOP
         ret
 """)
@@ -136,7 +141,7 @@ __DIVMOD8_NO_SUB:
             if self.needs_mod:
                 out.append("""__MOD8:
         call __DIVMOD8
-        load v0, v1
+        load v0, vd
         ret
 """)
 
@@ -628,12 +633,22 @@ __DIVMOD8_NO_SUB:
                     out.append(f"{lbl_end}:")
                 return dest_reg
 
+            if op == "+":
+                self.compile_expr_into(expr["left"], dest_reg, ctx)
+                if expr["right"]["type"] == "num":
+                    rv = expr["right"]["val"] & 0xFF
+                    if rv != 0:
+                        out.append(f"        add {dest_reg}, {rv}")
+                else:
+                    self.compile_expr_into(expr["right"], "vb", ctx)
+                    out.append(f"        add {dest_reg}, vb")
+                return dest_reg
+
             # Compile left into dest_reg
             self.compile_expr_into(expr["left"], dest_reg, ctx)
             # Compile right into temporary vb
             self.compile_expr_into(expr["right"], "vb", ctx)
-            if op == "+": out.append(f"        add {dest_reg}, vb")
-            elif op == "-": out.append(f"        sub {dest_reg}, vb")
+            if op == "-": out.append(f"        sub {dest_reg}, vb")
             elif op == "&": out.append(f"        and {dest_reg}, vb")
             elif op == "|": out.append(f"        or {dest_reg}, vb")
             elif op == "^": out.append(f"        xor {dest_reg}, vb")
@@ -805,6 +820,48 @@ __DIVMOD8_NO_SUB:
     # Function Calls & Flashiibo SDK Mappings
     # =========================================================================
 
+    def is_simple_arg(self, arg, target_reg, ctx):
+        if not arg:
+            return True
+        t = arg.get("type")
+        if t == "num":
+            return True
+        if t == "ident":
+            name = arg["name"]
+            loc = ctx.get("locals", {}).get(name)
+            if loc:
+                if target_reg not in ctx.get("locals", {}).values():
+                    return True
+                if loc == target_reg:
+                    return True
+        return False
+
+    def compile_call_args(self, args, target_regs, ctx):
+        out = ctx["out"]
+        depth = ctx.get("call_depth", 0)
+        eval_ctx = dict(ctx)
+        eval_ctx["call_depth"] = depth + 1
+
+        saved_indices = set()
+        for i, (arg, target_reg) in enumerate(zip(args, target_regs)):
+            if not self.is_simple_arg(arg, target_reg, ctx):
+                saved_indices.add(i)
+                self.compile_expr_into(arg, "v0", eval_ctx)
+                buf_name = f"__ARG_{depth}_{i}"
+                self.call_arg_buffers.add(buf_name)
+                out.append(f"        load i, {buf_name}")
+                out.append("        save v0")
+
+        for i, (arg, target_reg) in enumerate(zip(args, target_regs)):
+            if i in saved_indices:
+                buf_name = f"__ARG_{depth}_{i}"
+                out.append(f"        load i, {buf_name}")
+                out.append("        restore v0")
+                if target_reg != "v0":
+                    out.append(f"        load {target_reg}, v0")
+            else:
+                self.compile_expr_into(arg, target_reg, ctx)
+
     def compile_call(self, call_node, dest_reg, ctx):
         out = ctx["out"]
         func_name = call_node["func"]["name"]
@@ -839,8 +896,7 @@ __DIVMOD8_NO_SUB:
 
         if func_name == "feb_draw_sprite":
             # feb_draw_sprite(x, y, sprite, height) or (x, y, height, sprite)
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
+            self.compile_call_args([args[0], args[1]], ["va", "vb"], ctx)
             if args[2].get("type") == "ident":
                 sprite_label = args[2]["name"].upper()
                 h = args[3]["val"] if len(args) > 3 and args[3].get("type") == "num" else 8
@@ -855,8 +911,7 @@ __DIVMOD8_NO_SUB:
 
         if func_name == "feb_draw_sprite16":
             # feb_draw_sprite16(x, y, sprite)
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
+            self.compile_call_args([args[0], args[1]], ["va", "vb"], ctx)
             if args[2]["type"] == "ident":
                 name = args[2]["name"]
                 sprite_label = name.upper()
@@ -868,79 +923,58 @@ __DIVMOD8_NO_SUB:
 
         if func_name in ("feb_draw_digit", "feb_draw_num"):
             # feb_draw_digit(x, y, digit)
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
+            self.compile_call_args([args[0], args[1], args[2]], ["va", "vb", "vc"], ctx)
             out.append("        hex vc")
             out.append("        draw va, vb, 5")
             return dest_reg
 
         if func_name == "feb_set_draw_mode":
-            self.compile_expr_into(args[0], "va", ctx)
+            self.compile_call_args([args[0]], ["va"], ctx)
             out.append("        drawmode va")
             return dest_reg
 
         if func_name == "feb_draw_pixel":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
+            self.compile_call_args([args[0], args[1]], ["va", "vb"], ctx)
             out.append("        pixel va")
             return dest_reg
 
         if func_name == "feb_draw_line":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
-            self.compile_expr_into(args[3], "vd", ctx)
+            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vc", "vd"], ctx)
             out.append("        line va")
             return dest_reg
 
         if func_name == "feb_draw_hline":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
+            self.compile_call_args([args[0], args[1], args[2]], ["va", "vb", "vc"], ctx)
             out.append("        hline va")
             return dest_reg
 
         if func_name == "feb_draw_vline":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
+            self.compile_call_args([args[0], args[1], args[2]], ["va", "vb", "vc"], ctx)
             out.append("        vline va")
             return dest_reg
 
         if func_name == "feb_draw_rect":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
-            self.compile_expr_into(args[3], "vd", ctx)
+            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vc", "vd"], ctx)
             out.append("        rect va")
             return dest_reg
 
         if func_name == "feb_fill_rect":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
-            self.compile_expr_into(args[3], "vd", ctx)
+            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vc", "vd"], ctx)
             out.append("        fillrect va")
             return dest_reg
 
         if func_name == "feb_draw_circle":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
+            self.compile_call_args([args[0], args[1], args[2]], ["va", "vb", "vc"], ctx)
             out.append("        circle va")
             return dest_reg
 
         if func_name == "feb_fill_circle":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[2], "vc", ctx)
+            self.compile_call_args([args[0], args[1], args[2]], ["va", "vb", "vc"], ctx)
             out.append("        disc va")
             return dest_reg
 
         if func_name == "feb_test_pixel":
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
+            self.compile_call_args([args[0], args[1]], ["va", "vb"], ctx)
             out.append("        testpixel va")
             if dest_reg != "vf":
                 out.append(f"        load {dest_reg}, vf")
@@ -948,9 +982,7 @@ __DIVMOD8_NO_SUB:
 
         if func_name in ("feb_draw_string", "feb_draw_text"):
             # feb_draw_string(x, y, str, font)
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[3], "vc", ctx)
+            self.compile_call_args([args[0], args[1], args[3]], ["va", "vb", "vc"], ctx)
             # String label
             if args[2]["type"] == "str":
                 str_lbl = args[2]["label"]
@@ -959,17 +991,43 @@ __DIVMOD8_NO_SUB:
                 str_lbl = args[2]["name"].upper()
                 out.append(f"        load i, {str_lbl}")
             out.append("        text va")
+            if dest_reg != "va":
+                out.append(f"        load {dest_reg}, va")
+            return dest_reg
+
+        if func_name in ("feb_draw_char", "feb_draw_character"):
+            # feb_draw_char(x, y, ch, font)
+            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vc", "vd"], ctx)
+            out.append("        char va")
+            if dest_reg != "va":
+                out.append(f"        load {dest_reg}, va")
+            return dest_reg
+
+        if func_name in ("feb_string_width", "feb_str_width"):
+            # feb_string_width(str, font)
+            self.compile_call_args([args[1]], ["va"], ctx)
+            if args[0]["type"] == "str":
+                str_lbl = args[0]["label"]
+                out.append(f"        load i, {str_lbl}")
+            elif args[0]["type"] == "ident":
+                str_lbl = args[0]["name"].upper()
+                out.append(f"        load i, {str_lbl}")
+            out.append("        textlen va")
+            if dest_reg != "va":
+                out.append(f"        load {dest_reg}, va")
             return dest_reg
 
         if func_name == "feb_draw_number":
             # feb_draw_number(x, y, num, font)
-            self.compile_expr_into(args[0], "va", ctx)
-            self.compile_expr_into(args[1], "vb", ctx)
-            self.compile_expr_into(args[3], "vc", ctx)
-            self.compile_expr_into(args[2], "vd", ctx)
-            out.append("        load i, 0")
-            out.append("        add i, vd")
+            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vd", "vc"], ctx)
+            if args[2]["type"] == "num":
+                out.append(f"        load i, {args[2]['val'] & 0xFFF}")
+            else:
+                out.append("        load i, 0")
+                out.append("        add i, vd")
             out.append("        num va")
+            if dest_reg != "va":
+                out.append(f"        load {dest_reg}, va")
             return dest_reg
 
         if func_name == "feb_rand":
@@ -1048,8 +1106,7 @@ __DIVMOD8_NO_SUB:
 
         # Compile arguments into v1, v2, v3...
         arg_regs = [f"v{i}" for i in range(1, len(args) + 1)]
-        for i, a in enumerate(args):
-            self.compile_expr_into(a, arg_regs[i], ctx)
+        self.compile_call_args(args, arg_regs, ctx)
 
         out.append(f"        call {target_func}")
         if has_frame:
