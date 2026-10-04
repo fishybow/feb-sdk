@@ -57,10 +57,7 @@ ICON_CHIP8_16x16 = bytes([
 
 def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b"", icon=None):
     if icon is None or len(icon) != 32:
-        if "2048" in title:
-            icon = ICON_2048_16x16
-        else:
-            icon = ICON_CHIP8_16x16
+        icon = ICON_CHIP8_16x16
 
     magic = FEB_MAGIC
     format_version = FEB_VERSION
@@ -137,6 +134,7 @@ def main():
     parser.add_argument("--author", default="Flashiibo", help="Author string")
     parser.add_argument("--ver", default="1.0.0", help="Version string")
     parser.add_argument("--payload", default=None, help="Path to binary payload (e.g. .ch8 bytecode)")
+    parser.add_argument("--icon", default=None, help="Path to 16x16 1-bit icon bitmap (32 bytes)")
 
     args = parser.parse_args()
 
@@ -147,12 +145,18 @@ def main():
         with open(args.payload, "rb") as f:
             payload_bytes = f.read()
 
+    icon_bytes = None
+    if args.icon and os.path.exists(args.icon):
+        with open(args.icon, "rb") as f:
+            icon_bytes = f.read()
+
     feb_data = create_feb(
         app_type=app_type,
         title=args.title,
         author=args.author,
         version=args.ver,
-        payload=payload_bytes
+        payload=payload_bytes,
+        icon=icon_bytes
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
