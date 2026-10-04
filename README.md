@@ -112,9 +112,6 @@ feb-sdk/
 │   ├── features_demo/     <-- Custom VM extensions showcase: geometry, text, getkeys (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
-│   ├── quest/             <-- Tiny Quest: retro top-down action RPG with bump combat (128x64)
-│   │   ├── main.c
-│   │   └── Makefile
 │   └── template/          <-- Starter template with 4-way movement (128x64)
 │       ├── main.c
 │       └── Makefile

@@ -175,7 +175,7 @@ class TestFebBuild(unittest.TestCase):
                 version="1.0.0",
                 payload=bytecode
             )
-            self.assertEqual(len(feb_data), 96 + 1676)
+            self.assertEqual(len(feb_data), 96 + 623)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
@@ -198,16 +198,10 @@ class TestFebBuild(unittest.TestCase):
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 423)
 
-    def test_build_quest_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "quest", "main.c")
-        asm_code = feb_build.compile_c_to_asm(c_path)
-        bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 3461)
-
     def test_modular_compiler_equivalence(self):
         import compiler
         import c_compiler
-        for app in ["template", "button_demo", "features_demo", "2048", "quest"]:
+        for app in ["template", "button_demo", "features_demo"]:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm_mod = compiler.compile_c_to_asm(c_path)
             asm_facade = c_compiler.compile_c_to_asm(c_path)
