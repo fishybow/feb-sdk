@@ -24,7 +24,7 @@ Applications run inside a sandboxed virtual runtime with a 60 Hz frame cycle, mo
 | **Address Space** | 4,096 Bytes | Deterministic memory layout |
 | **Input Controls** | 4 Physical Buttons | Fixed directional mapping |
 | **Container Format** | `.feb` (Flashiibo Executable Binary) | 100-byte packed header + bytecode |
-| **Distribution** | `/feb/*.feb` on SPI Flash | Loaded over Web Bluetooth, USB, or Companion App |
+| **Distribution** | `/feb/*.feb` on SPI Flash | Loaded using Flashiibo Pro Tools on Web or Mobile |
 
 ---
 

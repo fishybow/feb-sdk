@@ -27,7 +27,7 @@ Flashiibo Pro Gen3 features a sandboxed virtual runtime for user-installable app
 | **Memory Limit** | 4,096 Bytes total address space | Sandboxed from system radio and kernel |
 | **Input Controls** | 4 Physical buttons | UP, DOWN, BACK (Left), OK (Right) |
 | **Container Format** | `.feb` (Flashiibo Executable Binary) | 100-byte metadata header + binary bytecode |
-| **Distribution** | VFS `/feb/*.feb` on SPI NOR Flash | Loaded via Companion App over BLE or USB |
+| **Distribution** | VFS `/feb/*.feb` on SPI NOR Flash | Loaded using Flashiibo Pro Tools on Web or Mobile |
 
 ---
 
