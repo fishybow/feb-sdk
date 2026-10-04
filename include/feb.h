@@ -42,7 +42,6 @@ extern "C" {
 /* Aliases for semantic clarity */
 #define FEB_KEY_BACK      FEB_KEY_LEFT
 #define FEB_KEY_OK        FEB_KEY_RIGHT
-#define FEB_KEY_CONFIRM   FEB_KEY_OK   /* Legacy alias */
 
 /* -------------------------------------------------------------------------
  * Display Dimensions
