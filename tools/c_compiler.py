@@ -33,7 +33,7 @@ TOK_PUNCT = "PUNCT"
 
 KEYWORDS = {
     "int", "char", "void", "uint8_t", "int8_t", "uint16_t", "int16_t",
-    "uint32_t", "int32_t", "bool", "true", "false", "static", "const",
+    "uint32_t", "int32_t", "bool", "true", "false", "static", "const", "extern",
     "struct", "typedef", "sizeof", "if", "else", "while", "for",
     "switch", "case", "default", "break", "return", "continue"
 }
@@ -202,7 +202,7 @@ class Lexer:
         return Token(TOK_EOF, None, self.line)
 
 class Preprocessor:
-    """Handles #include and #define macro substitutions."""
+    """Handles #include, conditional compilation (#ifdef, #ifndef, #else, #endif), and #define macro substitutions."""
     def __init__(self, include_dirs=None):
         self.include_dirs = include_dirs or []
         self.macros = {}
@@ -215,8 +215,51 @@ class Preprocessor:
     def _process_text(self, text, current_dir):
         lines = text.splitlines()
         output = []
+        cond_stack = []
+
+        def is_active():
+            return all(cond_stack)
+
         for line in lines:
             stripped = line.strip()
+
+            # Conditional compilation directives
+            if stripped.startswith("#ifdef"):
+                m = stripped.split(None, 1)
+                macro = m[1].split()[0] if len(m) > 1 else ""
+                cond_stack.append(macro in self.macros)
+                continue
+            elif stripped.startswith("#ifndef"):
+                m = stripped.split(None, 1)
+                macro = m[1].split()[0] if len(m) > 1 else ""
+                cond_stack.append(macro not in self.macros)
+                continue
+            elif stripped.startswith("#if"):
+                parts = stripped.split(None, 1)
+                expr = parts[1] if len(parts) > 1 else "0"
+                expr = re.sub(r'/\*.*?\*/', '', expr).split('//')[0].strip()
+                if expr in ("0", "false"):
+                    active = False
+                elif expr in ("1", "true"):
+                    active = True
+                else:
+                    active = expr in self.macros
+                cond_stack.append(active)
+                continue
+            elif stripped.startswith("#else"):
+                if cond_stack:
+                    cond_stack[-1] = not cond_stack[-1]
+                continue
+            elif stripped.startswith("#endif"):
+                if cond_stack:
+                    cond_stack.pop()
+                continue
+            elif stripped.startswith("#pragma"):
+                continue
+
+            if not is_active():
+                continue
+
             if stripped.startswith("#include"):
                 # Handle #include
                 m = re.match(r'#include\s*[<"]([^>"]+)[>"]', stripped)
@@ -243,33 +286,29 @@ class Preprocessor:
                 parts = stripped.split(None, 2)
                 if len(parts) >= 2:
                     name = parts[1]
-                    # Check for macro with parameters (e.g. MAX_X (W - S))
+                    # Check for macro with parameters
                     paren = name.find("(")
                     if paren != -1:
-                        # Macro with args
                         pass
                     else:
                         val_str = parts[2] if len(parts) > 2 else "1"
                         # Strip comments from define value
                         val_str = re.sub(r'/\*.*?\*/', '', val_str).split('//')[0].strip()
+                        for k, v in self.macros.items():
+                            val_str = re.sub(r'\b' + re.escape(k) + r'\b', str(v), val_str)
                         self.macros[name] = val_str
-                continue
-            elif stripped.startswith("#ifndef") or stripped.startswith("#ifdef") or stripped.startswith("#endif") or stripped.startswith("#else") or stripped.startswith("#pragma"):
                 continue
 
             output.append(line)
 
         expanded_text = "\n".join(output)
 
-        # Substitute known simple macro constants
-        # Sort by key length descending to avoid prefix substitution issues
-        for k in sorted(self.macros.keys(), key=len, reverse=True):
-            v = self.macros[k]
-            # Replace as word
-            expanded_text = re.sub(r'\b' + re.escape(k) + r'\b', v, expanded_text)
+        # Multi-pass macro substitution to resolve nested defines (e.g. MAX_X (WIDTH - SIZE))
+        for _ in range(3):
+            for k in sorted(self.macros.keys(), key=len, reverse=True):
+                v = self.macros[k]
+                expanded_text = re.sub(r'\b' + re.escape(k) + r'\b', v, expanded_text)
 
-        # Evaluate macro expressions iteratively if needed
-        # (e.g. FEB_SCREEN_WIDTH - SPRITE_SIZE)
         return expanded_text
 
 class CCompiler:
@@ -330,6 +369,18 @@ class CCompiler:
                 self.parse_type_declaration()
                 continue
 
+            if self.peek().val == "extern":
+                self.consume("extern")
+                if self.peek().type == TOK_STR:
+                    self.consume()
+                    if self.peek().val == "{":
+                        self.consume("{")
+                continue
+
+            if self.peek().val == "}":
+                self.consume("}")
+                continue
+
             # Peek ahead to determine if function or global variable
             self.parse_global_or_function()
 
@@ -341,7 +392,7 @@ class CCompiler:
             self.consume(";")
 
     def skip_type_specifiers(self):
-        while self.peek().val in ("static", "const", "volatile", "unsigned", "signed"):
+        while self.peek().val in ("static", "const", "volatile", "unsigned", "signed", "extern"):
             self.consume()
         type_name = self.consume().val
         while self.peek().val == "*":
@@ -427,11 +478,18 @@ class CCompiler:
                     self.consume("void")
                     break
                 self.skip_type_specifiers()
-                param_name = self.consume(expected_type=TOK_IDENT).val
+                if self.peek().val in (")", ","):
+                    param_name = f"arg{len(params)}"
+                else:
+                    param_name = self.consume(expected_type=TOK_IDENT).val
                 params.append(param_name)
                 if not self.match(","):
                     break
         self.consume(")")
+
+        # Forward declarations / prototypes ending with semicolon
+        if self.match(";"):
+            return
 
         # Function body
         body = self.parse_compound_statement()
@@ -520,6 +578,11 @@ class CCompiler:
             self.consume("break")
             self.consume(";")
             return {"type": "break"}
+
+        if tok.val == "continue":
+            self.consume("continue")
+            self.consume(";")
+            return {"type": "continue"}
 
         if tok.val == "return":
             self.consume("return")
@@ -786,7 +849,8 @@ class CCompiler:
             "func": func_name,
             "locals": locals_map,
             "out": out,
-            "break_label": None
+            "break_label": None,
+            "continue_label": None
         }
 
         self.compile_statement(func_data["body"], ctx)
@@ -835,8 +899,11 @@ class CCompiler:
         elif stype == "expr":
             self.compile_expr(stmt["expr"], ctx)
         elif stype == "break":
-            if ctx["break_label"]:
+            if ctx.get("break_label"):
                 out.append(f"        jump {ctx['break_label']}")
+        elif stype == "continue":
+            if ctx.get("continue_label"):
+                out.append(f"        jump {ctx['continue_label']}")
         elif stype == "return":
             if stmt["expr"]:
                 self.compile_expr_into(stmt["expr"], "v0", ctx)
@@ -858,8 +925,10 @@ class CCompiler:
         elif stype == "while":
             lbl_start = self.new_label("WHILE_START")
             lbl_end = self.new_label("WHILE_END")
-            old_break = ctx["break_label"]
+            old_break = ctx.get("break_label")
+            old_cont = ctx.get("continue_label")
             ctx["break_label"] = lbl_end
+            ctx["continue_label"] = lbl_start
 
             out.append(f"{lbl_start}:")
             # If condition is not literal '1' / 'true', test it
@@ -870,11 +939,15 @@ class CCompiler:
             out.append(f"        jump {lbl_start}")
             out.append(f"{lbl_end}:")
             ctx["break_label"] = old_break
+            ctx["continue_label"] = old_cont
         elif stype == "for":
             lbl_start = self.new_label("FOR_START")
+            lbl_step = self.new_label("FOR_STEP")
             lbl_end = self.new_label("FOR_END")
-            old_break = ctx["break_label"]
+            old_break = ctx.get("break_label")
+            old_cont = ctx.get("continue_label")
             ctx["break_label"] = lbl_end
+            ctx["continue_label"] = lbl_step
 
             if stmt.get("init"):
                 self.compile_statement(stmt["init"], ctx)
@@ -882,9 +955,13 @@ class CCompiler:
             if stmt.get("cond"):
                 self.compile_cond_branch(stmt["cond"], False, lbl_end, ctx)
             self.compile_statement(stmt["body"], ctx)
+            out.append(f"{lbl_step}:")
             if stmt.get("post"):
                 self.compile_expr(stmt["post"], ctx)
             out.append(f"        jump {lbl_start}")
+            out.append(f"{lbl_end}:")
+            ctx["break_label"] = old_break
+            ctx["continue_label"] = old_cont
             out.append(f"{lbl_end}:")
             ctx["break_label"] = old_break
         elif stype == "switch":
@@ -1423,6 +1500,9 @@ def compile_c_to_asm(c_filepath, include_dirs=None):
     """
     Public entry point to compile a C source file to CHIP-8 assembly.
     """
+    if include_dirs is None:
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        include_dirs = [os.path.join(repo_root, "include"), os.path.dirname(os.path.abspath(c_filepath))]
     compiler = CCompiler(include_dirs)
     return compiler.compile(c_filepath)
 

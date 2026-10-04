@@ -29,10 +29,11 @@ class TestAssembleChip8(unittest.TestCase):
         self.assertEqual(code, bytes([0x00, 0xE0, 0x00, 0xEE]))
 
     def test_assemble_template_demo(self):
-        asm = feb_build.generate_template_asm()
+        c_path = os.path.join(REPO_ROOT, "examples", "template", "main.c")
+        asm = feb_build.compile_c_to_asm(c_path)
         code = assemble_chip8.assemble(asm)
         self.assertGreater(len(code), 50)
-        self.assertEqual(len(code), 78)
+        self.assertEqual(len(code), 202)
 
     def test_assemble_schip_instructions(self):
         asm = """
@@ -183,7 +184,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "template", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 78)
+        self.assertEqual(len(bytecode), 202)
 
     def test_build_button_demo_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "button_demo", "main.c")
@@ -195,7 +196,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "features_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 289)
+        self.assertEqual(len(bytecode), 423)
 
     def test_build_quest_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "quest", "main.c")
