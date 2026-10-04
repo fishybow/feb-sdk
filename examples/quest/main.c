@@ -10,7 +10,7 @@
  *   - DOWN  (Key 8): Move South
  *   - BACK  (Key 4): Move West
  *   - OK    (Key 6): Move East
- *   - UP + DOWN + BACK (Held together): Hardware emergency exit to main menu
+ *   - UP + DOWN (Held together): Hardware emergency exit to main menu
  *   - Programmatic exit via feb_exit() / feb_quit()
  *
  * Bump Combat & Interactions:
@@ -431,9 +431,9 @@ int main(void) {
         // 5. Read Button Input (Non-blocking)
         uint8_t keys = feb_read_buttons();
 
-        // Check for hardware emergency exit chord: UP (1) + DOWN (2) + BACK (4)
-        if ((keys & (FEB_BTN_UP | FEB_BTN_DOWN | FEB_BTN_BACK)) ==
-            (FEB_BTN_UP | FEB_BTN_DOWN | FEB_BTN_BACK)) {
+        // Check for hardware emergency exit chord: UP (1) + DOWN (2)
+        if ((keys & (FEB_BTN_UP | FEB_BTN_DOWN)) ==
+            (FEB_BTN_UP | FEB_BTN_DOWN)) {
             feb_exit();
         }
 

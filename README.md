@@ -56,7 +56,7 @@ Flashiibo Gen3 features four physical buttons:
 | **OK** | `FEB_KEY_RIGHT` / `FEB_KEY_OK` | `0x6` | Directional RIGHT / Select |
 
 > [!IMPORTANT]
-> **Emergency Exit Chord:** Pressing **UP**, **DOWN**, and **BACK** simultaneously guarantees immediate return to the Flashiibo device menu. Long-press on BACK is NOT used as an exit trigger, making BACK completely safe for gameplay movement.
+> **Emergency Exit Chord:** Pressing **UP** and **DOWN** simultaneously guarantees immediate return to the Flashiibo device menu. Long-press on BACK is NOT used as an exit trigger, making BACK completely safe for gameplay movement.
 
 ---
 

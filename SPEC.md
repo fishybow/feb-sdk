@@ -105,7 +105,7 @@ Persistent user state (scores, progression, and settings) is stored in a dedicat
 
 ---
 
-## 4. Hardware Button Contract
+## 4. Hardware Button Contract & Controls
 
 Flashiibo Gen3 features four physical buttons:
 
@@ -125,9 +125,22 @@ Flashiibo Gen3 features four physical buttons:
                   └──────────────┘
 ```
 
-> **Mandatory Exit Chord:** Pressing **UP**, **DOWN**, and **BACK** simultaneously guarantees immediate, uninterceptable return to the device menu.
+| Physical Button | CHIP-8 Keypad Code | C Macro / Constant | Primary Role |
+|---|---|---|---|
+| **UP** | `0x2` | `FEB_KEY_UP` | Directional UP / Jump / Rotate |
+| **DOWN** | `0x8` | `FEB_KEY_DOWN` | Directional DOWN / Crouch |
+| **BACK** | `0x4` | `FEB_KEY_LEFT` / `FEB_KEY_BACK` | Directional LEFT / Cancel |
+| **OK** | `0x6` | `FEB_KEY_RIGHT` / `FEB_KEY_OK` | Directional RIGHT / Action |
+
+### 4.1 Hardware Exit Contract (UP + DOWN Chord)
+> **Hardware Exit Chord:** Pressing **UP** and **DOWN** simultaneously guarantees an immediate, uninterceptable exit back to the FEB Runner main menu.
 >
-> **Programmatic Exit:** Programs can immediately exit back to the FEB Runner menu at any time by executing opcode `00FD` (`EXIT` / `QUIT` / `feb_exit()`).
+> - **OS & VM Interception:** The UP + DOWN chord is detected at both the native MUI input dispatcher and inside the CHIP-8 virtual machine execution loop.
+> - **State Preservation:** Upon hardware exit, any modified RPL persistent flags (`FX75` / `feb_save_flags()`) are automatically flushed to the companion sidecar save container (`/feb/saves/<app_name>.sav`) on the SPI flash before unloading.
+> - **BACK Button Usability:** Long-press on BACK is deliberately **not** an exit trigger in the FEB runtime, allowing games and applications to freely use BACK as a full-fledged directional or action button (e.g., Left) without risking accidental termination.
+
+### 4.2 Programmatic Exit
+> Programs can immediately exit back to the FEB Runner menu at any time by executing opcode `00FD` (`EXIT` / `QUIT` / `feb_exit()`).
 
 ---
 

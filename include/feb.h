@@ -30,7 +30,7 @@ extern "C" {
  *   - DOWN:    Key 0x8
  *   - BACK:    Key 0x4  (Acts as Left in games/apps)
  *   - OK:      Key 0x6  (Acts as Right in games/apps)
- * NOTE: Pressing UP, DOWN, and BACK together guarantees immediate game exit back to
+ * NOTE: Pressing UP and DOWN together guarantees immediate game exit back to
  * the "FEB Runner" menu. Long press on BACK is not an exit key and is fully
  * available for normal gameplay controls.
  */

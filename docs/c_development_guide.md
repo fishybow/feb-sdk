@@ -60,10 +60,10 @@ Flashiibo devices feature four physical buttons on the device body. In FEB Runne
 | **BACK** | `FEB_KEY_LEFT` / `FEB_KEY_BACK` | `0x4` | Move cursor left / Navigate back |
 | **OK** | `FEB_KEY_RIGHT` / `FEB_KEY_OK` | `0x6` | Move cursor right / Select / Action |
 
-### 2.2 System Exit Contract (UP + DOWN + BACK Chord)
+### 2.2 System Exit Contract (UP + DOWN Chord)
 
 > [!IMPORTANT]
-> **Pressing UP, DOWN, and BACK simultaneously** is intercepted at both the OS and virtual machine engine level to guarantee an immediate, safe exit back to the "FEB Runner" main menu.
+> **Pressing UP and DOWN simultaneously** is intercepted at both the OS and virtual machine engine level to guarantee an immediate, safe exit back to the "FEB Runner" main menu.
 >
 > Long press on BACK is deliberately **not** an exit trigger, ensuring that BACK (Key 0x4 / Left) is completely safe to hold down for continuous gameplay movement or action charging without accidental termination.
 

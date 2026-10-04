@@ -8,7 +8,7 @@
  *   - DOWN:    Slide Down (Key 0x8)
  *   - BACK:    Slide Left (Key 0x4)
  *   - OK:      Slide Right (Key 0x6)
- * Pressing UP + DOWN + BACK together guarantees immediate game exit back to the FEB Runner menu.
+ * Pressing UP + DOWN together guarantees immediate game exit back to the FEB Runner menu.
  */
 
 #include "../../include/feb.h"

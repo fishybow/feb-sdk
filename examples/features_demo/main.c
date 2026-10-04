@@ -19,7 +19,7 @@
  *   - DOWN:  Move cursor DOWN
  *   - BACK:  Move cursor LEFT
  *   - OK:    Move cursor RIGHT
- *   - UP + DOWN + BACK: Exit to FEB Runner menu
+ *   - UP + DOWN: Exit to FEB Runner menu
  */
 
 #include "../../include/feb.h"
