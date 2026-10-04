@@ -111,15 +111,17 @@ Flashiibo Gen3 features four physical buttons:
 
 ```
                   ┌──────────────┐
-                  │   [ UP ]     │  Key: 0x2
+                  │    [ UP ]    │
                   │ (FEB_KEY_UP) │
+                  │   Key: 0x2   │
   ┌───────────────┴──────────────┴───────────────┐
-  │   [ BACK ]                      [ CONFIRM ]  │
+  │   [ BACK ]                         [ OK ]    │
   │ (FEB_KEY_LEFT)                (FEB_KEY_RIGHT)│
   │   Key: 0x4                       Key: 0x6    │
   └───────────────┬──────────────┬───────────────┘
-                  │  [ DOWN ]    │  Key: 0x8
+                  │   [ DOWN ]   │
                   │(FEB_KEY_DOWN)│
+                  │   Key: 0x8   │
                   └──────────────┘
 ```
 

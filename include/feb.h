@@ -29,7 +29,7 @@ extern "C" {
  *   - UP:      Key 0x2
  *   - DOWN:    Key 0x8
  *   - BACK:    Key 0x4  (Acts as Left in games/apps)
- *   - CONFIRM: Key 0x6  (Acts as Right in games/apps)
+ *   - OK:      Key 0x6  (Acts as Right in games/apps)
  * NOTE: Pressing UP and DOWN together guarantees immediate game exit back to
  * the "FEB Runner" menu. Long press on BACK is not an exit key and is fully
  * available for normal gameplay controls.
@@ -37,11 +37,12 @@ extern "C" {
 #define FEB_KEY_UP        0x2
 #define FEB_KEY_DOWN      0x8
 #define FEB_KEY_LEFT      0x4   /* Physical BACK button */
-#define FEB_KEY_RIGHT     0x6   /* Physical CONFIRM button */
+#define FEB_KEY_RIGHT     0x6   /* Physical OK button */
 
 /* Aliases for semantic clarity */
 #define FEB_KEY_BACK      FEB_KEY_LEFT
-#define FEB_KEY_CONFIRM   FEB_KEY_RIGHT
+#define FEB_KEY_OK        FEB_KEY_RIGHT
+#define FEB_KEY_CONFIRM   FEB_KEY_OK   /* Legacy alias */
 
 /* -------------------------------------------------------------------------
  * Display Dimensions
