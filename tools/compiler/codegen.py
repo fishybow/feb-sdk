@@ -947,6 +947,25 @@ __DIVMOD8_NO_SUB:
             out.append(f"        getkeys {dest_reg}")
             return dest_reg
 
+        if func_name in ("feb_set_delay_timer", "feb_set_delay"):
+            self.compile_call_args([args[0]], ["v0"], ctx)
+            out.append("        load dt, v0")
+            return dest_reg
+
+        if func_name in ("feb_get_delay_timer", "feb_get_delay"):
+            out.append(f"        load {dest_reg}, dt")
+            return dest_reg
+
+        if func_name in ("feb_delay_frames", "feb_sleep"):
+            self.compile_call_args([args[0]], ["v0"], ctx)
+            lbl_loop = self.new_label("DELAY_LOOP")
+            out.append("        load dt, v0")
+            out.append(f"{lbl_loop}:")
+            out.append("        load v0, dt")
+            out.append("        skip.eq v0, 0")
+            out.append(f"        jump {lbl_loop}")
+            return dest_reg
+
         if func_name == "feb_draw_sprite":
             # feb_draw_sprite(x, y, sprite, height) or (x, y, height, sprite)
             self.compile_call_args([args[0], args[1]], ["va", "vb"], ctx)

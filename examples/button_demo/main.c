@@ -3,140 +3,111 @@
  * @brief Button Demo Application for Flashiibo Gen3 FEB Runtime (.feb)
  *
  * User-friendly demo utility to verify 4-button hardware input:
- *   - Calls out the active button name (UP, DOWN, BACK, OK) in the center
- *   - Displays the virtual CHIP-8 key code in the center (CODE 0x2, 0x8, 0x4, 0x6)
- *   - Displays directional tap counts on screen edges (Top=UP, Bottom=DOWN, Left=BACK, Right=OK)
+ *   - Displays active button name (UP, DOWN, BACK, OK) and virtual key code in the center
+ *   - Highlights the active button on screen with filled vector geometry
+ *   - Displays directional tap counts on each button box
+ *   - Pure C using Flashiibo FEB SDK drawing APIs and typography fonts
  *
- * Each physical button press increments the count and updates the center callout.
  * Pressing UP + DOWN simultaneously exits back to the FEB Runner menu.
  */
 
 #include "../../include/feb.h"
 
-/* Center banner bitmaps (48x16 pixels total, 3 chunks of 16x16 / 32 bytes each) */
-static const uint8_t B_INIT_L[32] = {
-    0x00, 0x00, 0x00, 0x79, 0x00, 0x45, 0x00, 0x45,
-    0x00, 0x79, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41,
-    0x00, 0x00, 0x03, 0xc8, 0x02, 0x28, 0x02, 0x28,
-    0x03, 0xc8, 0x02, 0x28, 0x02, 0x28, 0x03, 0xc7
-};
-static const uint8_t B_INIT_M[32] = {
-    0x00, 0x00, 0xe7, 0xce, 0x14, 0x11, 0x14, 0x10,
-    0xe7, 0x8e, 0x44, 0x01, 0x24, 0x11, 0x17, 0xce,
-    0x00, 0x00, 0xbe, 0xf9, 0x88, 0x22, 0x88, 0x22,
-    0x88, 0x22, 0x88, 0x22, 0x88, 0x22, 0x08, 0x21
-};
-static const uint8_t B_INIT_R[32] = {
-    0x00, 0x00, 0x38, 0x00, 0x44, 0x00, 0x40, 0x00,
-    0x38, 0x00, 0x04, 0x00, 0x44, 0x00, 0x38, 0x00,
-    0x00, 0x00, 0xc8, 0x80, 0x2c, 0x80, 0x2a, 0x80,
-    0x29, 0x80, 0x28, 0x80, 0x28, 0x80, 0xc8, 0x80
-};
-
-static const uint8_t B_UP_L[32] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28,
-    0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
-};
-static const uint8_t B_UP_M[32] = {
-    0x00, 0x00, 0x22, 0xf0, 0x22, 0x88, 0x22, 0x88,
-    0x22, 0xf0, 0x22, 0x80, 0x22, 0x80, 0x1c, 0x80,
-    0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02,
-    0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
-};
-static const uint8_t B_UP_R[32] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0xc8, 0x9c, 0x28, 0xa2, 0x65, 0x02,
-    0xa2, 0x04, 0x25, 0x08, 0x28, 0x90, 0xc8, 0xbe
-};
-
-static const uint8_t B_DOWN_L[32] = {
-    0x00, 0x00, 0x00, 0x0e, 0x00, 0x09, 0x00, 0x08,
-    0x00, 0x08, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0e,
-    0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28,
-    0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
-};
-static const uint8_t B_DOWN_M[32] = {
-    0x00, 0x00, 0x1c, 0x8a, 0x22, 0x8b, 0xa2, 0x8a,
-    0xa2, 0xaa, 0xa2, 0xaa, 0x22, 0xda, 0x1c, 0x8a,
-    0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02,
-    0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
-};
-static const uint8_t B_DOWN_R[32] = {
-    0x00, 0x00, 0x20, 0x00, 0x20, 0x00, 0xa0, 0x00,
-    0x60, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00,
-    0x00, 0x00, 0xc8, 0x9c, 0x28, 0xa2, 0x65, 0x22,
-    0xa2, 0x1c, 0x25, 0x22, 0x28, 0xa2, 0xc8, 0x9c
-};
-
-static const uint8_t B_BACK_L[32] = {
-    0x00, 0x00, 0x00, 0x0f, 0x00, 0x08, 0x00, 0x08,
-    0x00, 0x0f, 0x00, 0x08, 0x00, 0x08, 0x00, 0x0f,
-    0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28,
-    0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
-};
-static const uint8_t B_BACK_M[32] = {
-    0x00, 0x00, 0x1c, 0x72, 0xa2, 0x8a, 0xa2, 0x82,
-    0x3e, 0x83, 0xa2, 0x82, 0xa2, 0x8a, 0x22, 0x72,
-    0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02,
-    0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
-};
-static const uint8_t B_BACK_R[32] = {
-    0x00, 0x00, 0x20, 0x00, 0x40, 0x00, 0x80, 0x00,
-    0x00, 0x00, 0x80, 0x00, 0x40, 0x00, 0x20, 0x00,
-    0x00, 0x00, 0xc8, 0x84, 0x28, 0x8c, 0x65, 0x14,
-    0xa2, 0x24, 0x25, 0x3e, 0x28, 0x84, 0xc8, 0x84
-};
-
-static const uint8_t B_OK_L[32] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28,
-    0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
-};
-static const uint8_t B_OK_M[32] = {
-    0x00, 0x00, 0x1c, 0x88, 0x22, 0x90, 0x22, 0xa0,
-    0x22, 0xc0, 0x22, 0xa0, 0x22, 0x90, 0x1c, 0x88,
-    0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02,
-    0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
-};
-static const uint8_t B_OK_R[32] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0xc8, 0x8c, 0x28, 0x90, 0x65, 0x20,
-    0xa2, 0x3c, 0x25, 0x22, 0x28, 0xa2, 0xc8, 0x9c
-};
-
-static void draw_center_banner(uint8_t key) {
-    switch (key) {
-        case FEB_KEY_UP:
-            feb_draw_sprite16(40, 24, B_UP_L);
-            feb_draw_sprite16(56, 24, B_UP_M);
-            feb_draw_sprite16(72, 24, B_UP_R);
-            break;
-        case FEB_KEY_DOWN:
-            feb_draw_sprite16(40, 24, B_DOWN_L);
-            feb_draw_sprite16(56, 24, B_DOWN_M);
-            feb_draw_sprite16(72, 24, B_DOWN_R);
-            break;
-        case FEB_KEY_BACK:
-            feb_draw_sprite16(40, 24, B_BACK_L);
-            feb_draw_sprite16(56, 24, B_BACK_M);
-            feb_draw_sprite16(72, 24, B_BACK_R);
-            break;
-        case FEB_KEY_OK:
-            feb_draw_sprite16(40, 24, B_OK_L);
-            feb_draw_sprite16(56, 24, B_OK_M);
-            feb_draw_sprite16(72, 24, B_OK_R);
-            break;
-        default:
-            feb_draw_sprite16(40, 24, B_INIT_L);
-            feb_draw_sprite16(56, 24, B_INIT_M);
-            feb_draw_sprite16(72, 24, B_INIT_R);
-            break;
+static void draw_btn(uint8_t btn_id, uint8_t count, bool active) {
+    if (btn_id == 1) { /* UP */
+        if (active) {
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+            feb_fill_rect(48, 16, 32, 12);
+            feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+            feb_draw_string(52, 19, "UP", FEB_FONT_4X6);
+            feb_draw_number(70, 19, count, FEB_FONT_4X6);
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+        } else {
+            feb_draw_rect(48, 16, 32, 12);
+            feb_draw_string(52, 19, "UP", FEB_FONT_4X6);
+            feb_draw_number(70, 19, count, FEB_FONT_4X6);
+        }
+    } else if (btn_id == 2) { /* DOWN */
+        if (active) {
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+            feb_fill_rect(48, 50, 32, 12);
+            feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+            feb_draw_string(52, 53, "DN", FEB_FONT_4X6);
+            feb_draw_number(70, 53, count, FEB_FONT_4X6);
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+        } else {
+            feb_draw_rect(48, 50, 32, 12);
+            feb_draw_string(52, 53, "DN", FEB_FONT_4X6);
+            feb_draw_number(70, 53, count, FEB_FONT_4X6);
+        }
+    } else if (btn_id == 3) { /* LEFT / BACK */
+        if (active) {
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+            feb_fill_rect(2, 33, 36, 12);
+            feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+            feb_draw_string(5, 36, "BACK", FEB_FONT_4X6);
+            feb_draw_number(28, 36, count, FEB_FONT_4X6);
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+        } else {
+            feb_draw_rect(2, 33, 36, 12);
+            feb_draw_string(5, 36, "BACK", FEB_FONT_4X6);
+            feb_draw_number(28, 36, count, FEB_FONT_4X6);
+        }
+    } else if (btn_id == 4) { /* RIGHT / OK */
+        if (active) {
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+            feb_fill_rect(90, 33, 36, 12);
+            feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+            feb_draw_string(94, 36, "OK", FEB_FONT_4X6);
+            feb_draw_number(114, 36, count, FEB_FONT_4X6);
+            feb_set_draw_mode(FEB_DRAW_MODE_SET);
+        } else {
+            feb_draw_rect(90, 33, 36, 12);
+            feb_draw_string(94, 36, "OK", FEB_FONT_4X6);
+            feb_draw_number(114, 36, count, FEB_FONT_4X6);
+        }
     }
+}
+
+static void render_screen(uint8_t last_key, uint8_t up_count, uint8_t down_count, uint8_t left_count, uint8_t right_count, uint8_t total) {
+    feb_clear_screen();
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+
+    /* Header */
+    feb_draw_string(28, 2, "BUTTON DEMO", FEB_FONT_6X10);
+    feb_draw_hline(0, 13, 128);
+
+    /* 4 Directional Buttons */
+    draw_btn(1, up_count, last_key == FEB_KEY_UP);
+    draw_btn(2, down_count, last_key == FEB_KEY_DOWN);
+    draw_btn(3, left_count, last_key == FEB_KEY_LEFT);
+    draw_btn(4, right_count, last_key == FEB_KEY_RIGHT);
+
+    /* Center Callout Box */
+    feb_draw_rect(42, 31, 44, 16);
+    if (last_key == FEB_KEY_UP) {
+        feb_draw_string(56, 33, "UP", FEB_FONT_6X10);
+        feb_draw_string(54, 41, "0x2", FEB_FONT_4X6);
+    } else if (last_key == FEB_KEY_DOWN) {
+        feb_draw_string(50, 33, "DOWN", FEB_FONT_6X10);
+        feb_draw_string(54, 41, "0x8", FEB_FONT_4X6);
+    } else if (last_key == FEB_KEY_LEFT) {
+        feb_draw_string(50, 33, "BACK", FEB_FONT_6X10);
+        feb_draw_string(54, 41, "0x4", FEB_FONT_4X6);
+    } else if (last_key == FEB_KEY_RIGHT) {
+        feb_draw_string(56, 33, "OK", FEB_FONT_6X10);
+        feb_draw_string(54, 41, "0x6", FEB_FONT_4X6);
+    } else {
+        feb_draw_string(48, 33, "READY", FEB_FONT_6X10);
+        feb_draw_string(45, 41, "PRESS KEY", FEB_FONT_4X6);
+    }
+
+    /* Footer: Exit Hint and Total Count */
+    feb_draw_string(2, 50, "EXIT:", FEB_FONT_4X6);
+    feb_draw_string(2, 57, "UP+DN", FEB_FONT_4X6);
+
+    feb_draw_string(92, 50, "TOTAL:", FEB_FONT_4X6);
+    feb_draw_number(116, 50, total, FEB_FONT_4X6);
 }
 
 int main(void) {
@@ -148,51 +119,26 @@ int main(void) {
     uint8_t right_count = 0;
 
     feb_set_high_res(true);
-    feb_clear_screen();
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+
+    render_screen(last_key, up_count, down_count, left_count, right_count, total_presses);
 
     while (1) {
-        /* Draw directional button press counters on display edges:
-         * Top:    UP count   (x=62, y=10)
-         * Left:   BACK count (x=24, y=30)
-         * Right:  OK count   (x=100, y=30)
-         * Bottom: DOWN count (x=62, y=48)
-         */
-        feb_draw_digit(62, 10, up_count & 0x0F);
-        feb_draw_digit(24, 30, left_count & 0x0F);
-        feb_draw_digit(100, 30, right_count & 0x0F);
-        feb_draw_digit(62, 48, down_count & 0x0F);
-
-        /* Center: Button name and CHIP-8 key code */
-        draw_center_banner(last_key);
-
         uint8_t key = feb_wait_key();
-
-        /* XOR erase previous state before redrawing */
-        feb_draw_digit(62, 10, up_count & 0x0F);
-        feb_draw_digit(24, 30, left_count & 0x0F);
-        feb_draw_digit(100, 30, right_count & 0x0F);
-        feb_draw_digit(62, 48, down_count & 0x0F);
-        draw_center_banner(last_key);
-
         total_presses++;
         last_key = key;
 
-        switch (key) {
-            case FEB_KEY_UP:
-                up_count++;
-                break;
-            case FEB_KEY_DOWN:
-                down_count++;
-                break;
-            case FEB_KEY_LEFT:
-                left_count++;
-                break;
-            case FEB_KEY_RIGHT:
-                right_count++;
-                break;
-            default:
-                break;
+        if (key == FEB_KEY_UP) {
+            up_count++;
+        } else if (key == FEB_KEY_DOWN) {
+            down_count++;
+        } else if (key == FEB_KEY_LEFT) {
+            left_count++;
+        } else if (key == FEB_KEY_RIGHT) {
+            right_count++;
         }
+
+        render_screen(last_key, up_count, down_count, left_count, right_count, total_presses);
     }
 
     return 0;

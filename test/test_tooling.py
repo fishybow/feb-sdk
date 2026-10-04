@@ -33,12 +33,19 @@ class SimChip8:
         self.key_queue = []
         self.keys_pressed = 0
         self.exited = False
+        self.dt = 0
         self.rpl_flags = bytearray(16)
         self.rng = random.Random(12345)
 
     def step(self):
         if self.exited:
             return
+        # Hardware exit chord: UP + DOWN
+        if (self.keys_pressed & 0x03) == 0x03 or (self.keys_pressed & ((1 << 0x2) | (1 << 0x8))) == ((1 << 0x2) | (1 << 0x8)):
+            self.exited = True
+            return
+        if self.dt > 0:
+            self.dt -= 1
         if self.waiting_for_key:
             if self.key_queue:
                 k = self.key_queue.pop(0)
@@ -124,14 +131,16 @@ class SimChip8:
                 if not (self.keys_pressed & (1 << self.v[x])): self.pc += 2
         elif o1 == 0xF:
             if nn == 0x07:
-                self.v[x] = 0
+                self.v[x] = self.dt
             elif nn == 0x0A:
                 if self.key_queue:
                     self.v[x] = self.key_queue.pop(0)
                 else:
                     self.waiting_for_key = True
                     self.key_reg = x
-            elif nn in (0x15, 0x18):
+            elif nn == 0x15:
+                self.dt = self.v[x]
+            elif nn == 0x18:
                 pass
             elif nn == 0x1E:
                 self.i = (self.i + self.v[x]) & 0xFFF
@@ -334,18 +343,24 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "button_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 1008)
+        self.assertEqual(len(bytecode), 1192)
 
-    def test_build_features_demo_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "features_demo", "main.c")
+    def test_build_draw_demo_c(self):
+        c_path = os.path.join(REPO_ROOT, "examples", "draw_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 396)
+        self.assertEqual(len(bytecode), 386)
+
+    def test_build_flappy_bird_c(self):
+        c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 1777)
 
     def test_modular_compiler_equivalence(self):
         import compiler
         import c_compiler
-        for app in ["template", "button_demo", "features_demo", "2048"]:
+        for app in ["template", "button_demo", "draw_demo", "flappy_bird", "2048"]:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm_mod = compiler.compile_c_to_asm(c_path)
             asm_facade = c_compiler.compile_c_to_asm(c_path)
@@ -641,7 +656,7 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_all_sdk_examples_pure_c_compilation_and_packaging(self):
         """Guard: All SDK examples compile, assemble, and package into valid .feb binaries within budgets."""
-        examples = ["template", "button_demo", "features_demo", "2048"]
+        examples = ["template", "button_demo", "draw_demo", "flappy_bird", "2048"]
         for app in examples:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm = feb_build.compile_c_to_asm(c_path)
@@ -789,6 +804,68 @@ class TestToolingGuards(unittest.TestCase):
         finally:
             if os.path.exists(p):
                 os.remove(p)
+
+    def test_guard_flappy_bird_programmatic_exit(self):
+        """Guard: Flappy Bird demonstrates programmatic exit on BACK button press both on title and in-game."""
+        c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
+        asm = feb_build.compile_c_to_asm(c_path)
+        bc = assemble_chip8.assemble(asm)
+
+        # 1. Title screen exit on BACK (0x04)
+        sim = SimChip8(bc)
+        for _ in range(50):
+            sim.step()
+            if sim.exited:
+                break
+        self.assertFalse(sim.exited, "Flappy Bird should not exit prematurely on title screen")
+
+        sim.keys_pressed = 0x04  # Press BACK
+        for _ in range(100):
+            sim.step()
+            if sim.exited:
+                break
+        self.assertTrue(sim.exited, "Flappy Bird failed to programmatically exit on BACK key press from title")
+
+        # 2. In-game exit on BACK
+        sim2 = SimChip8(bc)
+        for _ in range(30):
+            sim2.step()
+        sim2.keys_pressed = 0x08  # Press OK to start
+        for _ in range(50):
+            sim2.step()
+        sim2.keys_pressed = 0x00  # Release
+        for _ in range(50):
+            sim2.step()
+        self.assertFalse(sim2.exited, "Flappy Bird exited during gameplay")
+
+        sim2.keys_pressed = 0x04  # Press BACK in game
+        for _ in range(100):
+            sim2.step()
+            if sim2.exited:
+                break
+        self.assertTrue(sim2.exited, "Flappy Bird failed to programmatically exit on BACK key press during gameplay")
+
+    def test_guard_draw_demo_execution(self):
+        """Guard: draw_demo executes vector drawing and responds to UP+DOWN chord exit."""
+        c_path = os.path.join(REPO_ROOT, "examples", "draw_demo", "main.c")
+        asm = feb_build.compile_c_to_asm(c_path)
+        bc = assemble_chip8.assemble(asm)
+        sim = SimChip8(bc)
+
+        # Run several iterations
+        for _ in range(200):
+            sim.step()
+            if sim.exited:
+                break
+        self.assertFalse(sim.exited)
+
+        # UP+DOWN chord (0x01 | 0x02 = 0x03)
+        sim.keys_pressed = 0x03
+        for _ in range(100):
+            sim.step()
+            if sim.exited:
+                break
+        self.assertTrue(sim.exited, "draw_demo failed to exit on UP+DOWN chord")
 
 if __name__ == "__main__":
     unittest.main()
