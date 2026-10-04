@@ -44,6 +44,19 @@ extern "C" {
 #define FEB_KEY_OK        FEB_KEY_RIGHT
 
 /* -------------------------------------------------------------------------
+ * Hardware Button Bitmask (for feb_get_keys() / FXB0 GETKEYS)
+ * -------------------------------------------------------------------------
+ * Instantaneous 4-button polling bitmask.
+ */
+#define FEB_BTN_UP        (1 << 0)  /* Bit 0: UP button pressed */
+#define FEB_BTN_DOWN      (1 << 1)  /* Bit 1: DOWN button pressed */
+#define FEB_BTN_LEFT      (1 << 2)  /* Bit 2: BACK / Left button pressed */
+#define FEB_BTN_RIGHT     (1 << 3)  /* Bit 3: OK / Right button pressed */
+
+#define FEB_BTN_BACK      FEB_BTN_LEFT
+#define FEB_BTN_OK        FEB_BTN_RIGHT
+
+/* -------------------------------------------------------------------------
  * Display Dimensions
  * -------------------------------------------------------------------------
  * Default display resolution for FEB applications is 128x64 (Super-CHIP mode).
@@ -58,6 +71,22 @@ extern "C" {
 
 /* Built-in hex font glyph height (characters '0'-'F') */
 #define FEB_FONT_DIGIT_HEIGHT    5
+
+/* -------------------------------------------------------------------------
+ * Built-in Typography Fonts (for feb_draw_string, feb_draw_char, etc.)
+ * ------------------------------------------------------------------------- */
+#define FEB_FONT_4X6         0   /* 4x6 tiny numeric & compact font (u8g2_font_4x6_tr) */
+#define FEB_FONT_6X10        1   /* 6x10 standard UI font (u8g2_font_siji_t_6x10) */
+#define FEB_FONT_RETRO_8X8   2   /* 8x8 blocky retro arcade font (u8g2_font_likeminecraft_te) */
+
+/* -------------------------------------------------------------------------
+ * Extended Drawing Modes (for feb_set_draw_mode / FX98 DRAWMODE)
+ * ------------------------------------------------------------------------- */
+#define FEB_DRAW_MODE_XOR             0   /* Invert pixels (standard CHIP-8) */
+#define FEB_DRAW_MODE_SET             1   /* Solid write (turn pixels ON) */
+#define FEB_DRAW_MODE_CLEAR           2   /* Eraser (turn pixels OFF) */
+#define FEB_DRAW_MODE_OPAQUE          3   /* Set pixels ON with solid black background box */
+#define FEB_DRAW_MODE_INVERTED_OPAQUE 4   /* Clear pixels OFF with solid white background box */
 
 /* -------------------------------------------------------------------------
  * Core SDK API Declarations
@@ -104,6 +133,168 @@ bool feb_draw_sprite16(uint8_t x, uint8_t y, const uint8_t *sprite);
  * @param digit Digit value (0..15)
  */
 void feb_draw_digit(uint8_t x, uint8_t y, uint8_t digit);
+
+/* -------------------------------------------------------------------------
+ * Drawing Modes & Geometry Primitives
+ * ------------------------------------------------------------------------- */
+
+/**
+ * @brief Sets the active drawing mode for all subsequent graphics operations.
+ *
+ * @param mode Drawing mode (FEB_DRAW_MODE_XOR, SET, CLEAR, OPAQUE, or INVERTED_OPAQUE)
+ */
+void feb_set_draw_mode(uint8_t mode);
+
+/**
+ * @brief Plots a single pixel at (x, y) using the active draw mode.
+ *
+ * @param x Horizontal coordinate (0..127)
+ * @param y Vertical coordinate (0..63)
+ */
+void feb_draw_pixel(uint8_t x, uint8_t y);
+
+/**
+ * @brief Draws an arbitrary line between (x0, y0) and (x1, y1) using Bresenham's algorithm.
+ *
+ * @param x0 Starting horizontal coordinate
+ * @param y0 Starting vertical coordinate
+ * @param x1 Ending horizontal coordinate
+ * @param y1 Ending vertical coordinate
+ */
+void feb_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
+
+/**
+ * @brief Draws a fast horizontal line starting at (x, y) of length @p len.
+ *
+ * @param x Starting horizontal coordinate
+ * @param y Vertical coordinate
+ * @param len Length in pixels
+ */
+void feb_draw_hline(uint8_t x, uint8_t y, uint8_t len);
+
+/**
+ * @brief Draws a fast vertical line starting at (x, y) of height @p len.
+ *
+ * @param x Horizontal coordinate
+ * @param y Starting vertical coordinate
+ * @param len Height in pixels
+ */
+void feb_draw_vline(uint8_t x, uint8_t y, uint8_t len);
+
+/**
+ * @brief Draws an unfilled outline rectangle at (x, y) with width @p w and height @p h.
+ *
+ * @param x Top-left horizontal coordinate
+ * @param y Top-left vertical coordinate
+ * @param w Width in pixels
+ * @param h Height in pixels
+ */
+void feb_draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+
+/**
+ * @brief Draws a filled solid rectangle at (x, y) with width @p w and height @p h.
+ *
+ * @param x Top-left horizontal coordinate
+ * @param y Top-left vertical coordinate
+ * @param w Width in pixels
+ * @param h Height in pixels
+ */
+void feb_fill_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+
+/**
+ * @brief Draws an unfilled outline circle centered at (x, y) with radius @p r.
+ *
+ * @param x Center horizontal coordinate
+ * @param y Center vertical coordinate
+ * @param r Radius in pixels
+ */
+void feb_draw_circle(uint8_t x, uint8_t y, uint8_t r);
+
+/**
+ * @brief Draws a filled solid circle centered at (x, y) with radius @p r.
+ *
+ * @param x Center horizontal coordinate
+ * @param y Center vertical coordinate
+ * @param r Radius in pixels
+ */
+void feb_fill_circle(uint8_t x, uint8_t y, uint8_t r);
+
+/**
+ * @brief Tests whether the pixel at (x, y) is currently active without altering screen state.
+ *
+ * Provides zero-RAM collision detection directly against the display buffer.
+ *
+ * @param x Horizontal coordinate
+ * @param y Vertical coordinate
+ * @return true if the pixel is turned on, false if off or out of bounds.
+ */
+bool feb_test_pixel(uint8_t x, uint8_t y);
+
+/* -------------------------------------------------------------------------
+ * Typography & String Formatting
+ * ------------------------------------------------------------------------- */
+
+/**
+ * @brief Renders a null-terminated ASCII string starting at (x, y) using @p font_id.
+ *
+ * @param x Top-left horizontal coordinate
+ * @param y Top-left vertical coordinate
+ * @param str Null-terminated ASCII string to render
+ * @param font_id Font ID (FEB_FONT_4X6, FEB_FONT_6X10, or FEB_FONT_RETRO_8X8)
+ * @return Advance horizontal x-coordinate after the last rendered glyph.
+ */
+uint8_t feb_draw_string(uint8_t x, uint8_t y, const char *str, uint8_t font_id);
+
+/**
+ * @brief Renders a single ASCII character at (x, y) using @p font_id.
+ *
+ * @param x Top-left horizontal coordinate
+ * @param y Top-left vertical coordinate
+ * @param ch ASCII character
+ * @param font_id Font ID (FEB_FONT_4X6, FEB_FONT_6X10, or FEB_FONT_RETRO_8X8)
+ * @return Advance horizontal x-coordinate after the rendered glyph.
+ */
+uint8_t feb_draw_char(uint8_t x, uint8_t y, char ch, uint8_t font_id);
+
+/**
+ * @brief Calculates the exact pixel width of a string rendered in @p font_id.
+ *
+ * @param str Null-terminated ASCII string to measure
+ * @param font_id Font ID (FEB_FONT_4X6, FEB_FONT_6X10, or FEB_FONT_RETRO_8X8)
+ * @return Pixel width of the string.
+ */
+uint8_t feb_string_width(const char *str, uint8_t font_id);
+
+/**
+ * @brief Formats and renders a 16-bit unsigned integer (0..65535) at (x, y) using @p font_id.
+ *
+ * @param x Top-left horizontal coordinate
+ * @param y Top-left vertical coordinate
+ * @param num 16-bit unsigned integer value
+ * @param font_id Font ID (FEB_FONT_4X6, FEB_FONT_6X10, or FEB_FONT_RETRO_8X8)
+ * @return Advance horizontal x-coordinate after the rendered number.
+ */
+uint8_t feb_draw_number(uint8_t x, uint8_t y, uint16_t num, uint8_t font_id);
+
+/* -------------------------------------------------------------------------
+ * Hardware Synchronization & Input Polling
+ * ------------------------------------------------------------------------- */
+
+/**
+ * @brief Deterministically yields VM execution until the next 60 Hz hardware frame tick.
+ * Eliminates screen tearing and provides rock-solid framerate pacing.
+ */
+void feb_wait_vsync(void);
+
+/**
+ * @brief Reads the instantaneous 4-button hardware bitmask into an 8-bit integer.
+ *
+ * Returns a bitmask of FEB_BTN_UP (0x01), FEB_BTN_DOWN (0x02), FEB_BTN_LEFT (0x04),
+ * and FEB_BTN_RIGHT (0x08). Supports multi-button simultaneous chords and zero-latency polling.
+ *
+ * @return Bitmask of currently held physical buttons.
+ */
+uint8_t feb_get_keys(void);
 
 /**
  * @brief Waits synchronously for a physical key press and returns the key code.

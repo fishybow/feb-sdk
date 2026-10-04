@@ -77,10 +77,18 @@ Include the C SDK header in your application:
 #include "feb.h"
 ```
 
-### 3.1 Display Functions
+### 3.1 Display & Drawing Modes
 
 #### `void feb_clear_screen(void);`
 Clears the entire display buffer (turns off all pixels).
+
+#### `void feb_set_draw_mode(uint8_t mode);`
+Sets the active drawing mode for all subsequent graphics operations:
+- `FEB_DRAW_MODE_XOR` (0): Inverts existing pixels (standard CHIP-8 blitting).
+- `FEB_DRAW_MODE_SET` (1): Solid write (turns pixels ON).
+- `FEB_DRAW_MODE_CLEAR` (2): Eraser (turns pixels OFF).
+- `FEB_DRAW_MODE_OPAQUE` (3): Sets pixels ON with a solid black background bounding box (erases whatever is behind glyphs/shapes).
+- `FEB_DRAW_MODE_INVERTED_OPAQUE` (4): Clears pixels OFF inside a solid white bounding box.
 
 #### `bool feb_draw_sprite(uint8_t x, uint8_t y, const uint8_t *sprite, uint8_t height);`
 Draws an 8-pixel wide bitmap sprite of height `height` (1 to 15 rows) at coordinate `(x, y)`.
@@ -88,18 +96,64 @@ Draws an 8-pixel wide bitmap sprite of height `height` (1 to 15 rows) at coordin
 - **Erase a sprite:** Call `feb_draw_sprite` a second time with the exact same coordinates and data.
 - **Return value:** Returns `true` if any drawn pixel collided with an already active pixel on screen.
 
+#### `bool feb_draw_sprite16(uint8_t x, uint8_t y, const uint8_t *sprite);`
+Draws a 16×16 pixel sprite in 128×64 mode (32 bytes). Returns `true` if collision occurred.
+
 #### `void feb_draw_digit(uint8_t x, uint8_t y, uint8_t digit);`
 Renders a built-in single-digit hexadecimal glyph (`0x0` through `0xF`, 5 pixels high by 4 pixels wide) at `(x, y)`.
 
-### 3.2 Input Functions
+### 3.2 Fast Geometric Primitives
+
+Flashiibo firmware >= 26.10.4 includes hardware-accelerated drawing primitives executed directly by the VM:
+
+- `void feb_draw_pixel(uint8_t x, uint8_t y);`: Plots single pixel using active draw mode.
+- `void feb_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);`: Draws line between endpoints using Bresenham's algorithm.
+- `void feb_draw_hline(uint8_t x, uint8_t y, uint8_t len);`: Draws fast horizontal line.
+- `void feb_draw_vline(uint8_t x, uint8_t y, uint8_t len);`: Draws fast vertical line.
+- `void feb_draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws unfilled outline rectangle.
+- `void feb_fill_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws filled solid rectangle.
+- `void feb_draw_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws unfilled circle outline centered at `(x, y)`.
+- `void feb_fill_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws filled solid circle centered at `(x, y)`.
+
+### 3.3 Zero-RAM Collision Detection
+
+#### `bool feb_test_pixel(uint8_t x, uint8_t y);`
+Inspects whether the pixel at `(x, y)` is currently lit without modifying the display buffer or requiring shadow collision arrays in memory. Returns `true` if lit, `false` otherwise.
+
+### 3.4 Typography & Number Formatting
+
+Built-in typography functions render text using high-legibility u8g2 bitmap fonts:
+- `FEB_FONT_4X6` (0): Compact 4×6 numeric & ASCII font.
+- `FEB_FONT_6X10` (1): Standard UI 6×10 font.
+- `FEB_FONT_RETRO_8X8` (2): Blocky 8×8 retro arcade font.
+
+Functions:
+- `uint8_t feb_draw_string(uint8_t x, uint8_t y, const char *str, uint8_t font_id);`: Renders null-terminated ASCII string; returns advanced X coordinate.
+- `uint8_t feb_draw_char(uint8_t x, uint8_t y, char ch, uint8_t font_id);`: Renders single ASCII character; returns advanced X coordinate.
+- `uint8_t feb_string_width(const char *str, uint8_t font_id);`: Calculates pixel width of string without drawing.
+- `uint8_t feb_draw_number(uint8_t x, uint8_t y, uint16_t num, uint8_t font_id);`: Formats and renders 16-bit unsigned integer (0..65535) directly from register `I`; returns advanced X coordinate.
+
+### 3.5 Input & Hardware Synchronization
+
+#### `void feb_wait_vsync(void);`
+Deterministically halts VM stepping until the next 60 Hz hardware timer tick. This guarantees buttery smooth 60 FPS animation, rock-solid frame pacing, and eliminates screen tearing.
+
+#### `uint8_t feb_get_keys(void);`
+Non-blocking poll of the instantaneous 4-button hardware bitmask:
+- Bit 0 (`0x01`): `FEB_BTN_UP`
+- Bit 1 (`0x02`): `FEB_BTN_DOWN`
+- Bit 2 (`0x04`): `FEB_BTN_LEFT` (`FEB_BTN_BACK`)
+- Bit 3 (`0x08`): `FEB_BTN_RIGHT` (`FEB_BTN_OK`)
+
+Allows detecting multi-button simultaneous presses and chord combinations with zero latency.
 
 #### `uint8_t feb_wait_key(void);`
 Blocks execution until a physical button is pressed, and returns the key code (`0x2`, `0x8`, `0x4`, or `0x6`).
 
 #### `bool feb_is_key_down(uint8_t key);`
-Non-blocking check to determine if the specified key is currently held down. Ideal for continuous movement or action games.
+Non-blocking check to determine if the specified key code is currently held down.
 
-### 3.3 Timing & Randomness
+### 3.6 Timing & Randomness
 
 #### `uint8_t feb_rand(uint8_t mask);`
 Returns an 8-bit pseudo-random integer masked with `mask` (e.g., `feb_rand(0x07)` produces `0`..`7`).
@@ -113,7 +167,7 @@ Returns the current value of the 60 Hz delay timer register.
 #### `void feb_delay_frames(uint8_t frames);`
 Blocks execution for `frames` screen frames (~16.6 ms per frame).
 
-### 3.4 Persistent Storage (Sidecar `.sav`)
+### 3.7 Persistent Storage (Sidecar `.sav`)
 
 Executable `.feb` files are strictly read-only. User save data, high scores, and settings are automatically persisted to `/feb/saves/<app_name>.sav` upon exit.
 
@@ -125,9 +179,39 @@ Loads up to 16 bytes of persistent application state previously saved by `feb_sa
 
 ---
 
-## 4. Examples & Starter Template
+## 4. Examples & Architectural Patterns
 
-### 4.1 Starter Template (`examples/template`)
+### 4.1 Real-Time 60 FPS Game Loop Pattern (`examples/features_demo`)
+
+For smooth, dynamic games, combine `feb_wait_vsync()` with non-blocking `feb_get_keys()`:
+
+```c
+#include "feb.h"
+
+int main(void) {
+    uint8_t x = 60, y = 30;
+    feb_set_high_res(true);
+
+    while (1) {
+        feb_wait_vsync();      /* Lock to hardware 60 Hz tick */
+        feb_clear_screen();
+
+        /* Render scene */
+        feb_draw_string(4, 2, "60 FPS GAME", FEB_FONT_6X10);
+        feb_draw_rect(x, y, 6, 6);
+
+        /* Poll instantaneous input */
+        uint8_t keys = feb_get_keys();
+        if (keys & FEB_BTN_UP)    y--;
+        if (keys & FEB_BTN_DOWN)  y++;
+        if (keys & FEB_BTN_LEFT)  x--;
+        if (keys & FEB_BTN_RIGHT) x++;
+    }
+    return 0;
+}
+```
+
+### 4.2 Turn-Based Event Loop Pattern (`examples/template`)
 A minimal moving sprite demo using 4-button directional keys:
 
 ```c

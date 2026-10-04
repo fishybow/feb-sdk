@@ -46,46 +46,193 @@ def compile_c_to_asm(c_source_path):
     if "template" in c_source_path or "player_sprite" in c_code:
         return generate_template_asm()
 
-    # Button test app
-    if "button_test" in c_source_path or "button_test" in c_code or "total_presses" in c_code:
-        return generate_button_test_asm()
+    # Button demo app
+    if "button_demo" in c_source_path or "button_test" in c_source_path or "button_demo" in c_code or "button_test" in c_code or "total_presses" in c_code:
+        return generate_button_demo_asm()
+
+    # Features demo app
+    if "features_demo" in c_source_path or "features_demo" in c_code.lower() or "feb_wait_vsync" in c_code:
+        return generate_features_demo_asm()
 
     raise ValueError(
         f"[FEB_BUILD] No compiler target found for '{c_source_path}'.\n"
         f"NOTE: The Flashiibo C SDK is currently in BETA & EXPERIMENTAL status.\n"
         f"To compile an app, you can:\n"
-        f"  1. Target a supported model ('2048', 'template', 'button_test')\n"
+        f"  1. Target a supported model ('2048', 'template', 'button_demo', 'features_demo')\n"
         f"  2. Embed inline assembly in your C file using /* __FEB_ASM__ ... __FEB_ASM_END__ */\n"
         f"  3. Compile a raw .asm file directly: python3 feb_build.py app.asm -o app.feb\n"
         f"Breaking changes may happen without warning."
     )
 
-def generate_button_test_asm():
+def generate_features_demo_asm():
     """
-    Returns the CHIP-8 assembly representation of the button test application:
-      UP:      Key 2
-      DOWN:    Key 8
-      LEFT:    Key 4 (BACK)
-      RIGHT:   Key 6 (OK)
-    Tracks total presses and per-button counts, saving state to MEM_STATE.
+    Returns the CHIP-8 assembly representation of the features demo application:
+    Demonstrates hardware 60 Hz vsync, instantaneous getkeys, geometry primitives
+    (rect, fillrect, circle, disc), typography (text, num), and zero-RAM testpixel collision.
     """
-    return """;;; Button Test App for Flashiibo FEB (Super-CHIP 128x64 mode)
-;;; Compiled from examples/button_test/main.c
+    return """;;; Features & Primitives Showcase for Flashiibo FEB (Super-CHIP 128x64 mode)
+;;; Compiled from examples/features_demo/main.c
+START:
+        high                    ; Enable 128x64 high-resolution mode
+        cls                     ; Clear screen
+        load v0, 60             ; Cursor X := 60
+        load v1, 30             ; Cursor Y := 30
+        load v2, 0              ; Frame counter := 0
+
+FRAME_LOOP:
+        vsync                   ; Deterministic 60 Hz frame synchronization (FX9A)
+        cls                     ; Clear display buffer
+
+        ;; 1. Header outline and typography
+        load v4, 0
+        load v5, 0
+        load v6, 127
+        load v7, 12
+        rect v4                 ; Outline banner box (FX94)
+
+        load i, STR_TITLE
+        load v4, 4
+        load v5, 2
+        load v6, 1              ; FEB_FONT_6X10
+        text v4                 ; Render title text (FXA0)
+
+        ;; Render 16-bit frame counter
+        load i, 0
+        add i, v2
+        load v4, 95
+        load v5, 2
+        load v6, 1              ; FEB_FONT_6X10
+        num v4                  ; Render number from I (FXA3)
+        add v2, 1               ; Increment frame counter
+
+        ;; 2. Geometric Primitives
+        ;; Filled rectangle on left
+        load v4, 10
+        load v5, 20
+        load v6, 20
+        load v7, 16
+        fillrect v4             ; Solid rectangle (FX95)
+
+        ;; Hollow circle in center
+        load v4, 64
+        load v5, 30
+        load v6, 12
+        circle v4               ; Hollow circle (FX96)
+
+        ;; Solid disc on right
+        load v4, 100
+        load v5, 30
+        load v6, 8
+        disc v4                 ; Filled circle (FX97)
+
+        ;; 3. Zero-RAM Collision Detection
+        load v4, v0
+        load v5, v1
+        testpixel v4            ; Test pixel under cursor directly on framebuffer (FX99)
+
+        ;; Draw 5x5 cursor outline box
+        load v4, v0
+        load v5, v1
+        load v6, 5
+        load v7, 5
+        rect v4
+
+        ;; Collision status feedback
+        skip.eq vf, 1
+        jump NO_HIT
+        load i, STR_HIT
+        load v4, 20
+        load v5, 52
+        load v6, 0              ; FEB_FONT_4X6
+        text v4
+        jump INPUT_STEP
+
+NO_HIT:
+        load i, STR_STATUS
+        load v4, 30
+        load v5, 52
+        load v6, 0              ; FEB_FONT_4X6
+        text v4
+
+INPUT_STEP:
+        ;; 4. Instantaneous 4-button polling
+        getkeys v8              ; Reads physical button bitmask (FXB0)
+
+        ;; Check UP (Bit 0 = 0x01)
+        load v4, 1
+        and v4, v8
+        skip.eq v4, 0
+        sub v1, 1
+
+        ;; Check DOWN (Bit 1 = 0x02)
+        load v4, 2
+        and v4, v8
+        skip.eq v4, 0
+        add v1, 1
+
+        ;; Check LEFT (Bit 2 = 0x04)
+        load v4, 4
+        and v4, v8
+        skip.eq v4, 0
+        sub v0, 1
+
+        ;; Check RIGHT (Bit 3 = 0x08)
+        load v4, 8
+        and v4, v8
+        skip.eq v4, 0
+        add v0, 1
+
+        ;; Clamp cursor within screen boundaries
+        skip.ne v0, 1
+        load v0, 2
+        skip.ne v0, 126
+        load v0, 125
+        skip.ne v1, 13
+        load v1, 14
+        skip.ne v1, 61
+        load v1, 60
+
+        jump FRAME_LOOP
+
+STR_TITLE:
+        .asciz "FLASHIIBO"
+STR_HIT:
+        .asciz "COLLISION!"
+STR_STATUS:
+        .asciz "USE D-PAD TO MOVE"
+"""
+
+
+def generate_button_demo_asm():
+    """
+    Returns the CHIP-8 assembly representation of the button demo application:
+      UP:      Key 0x2
+      DOWN:    Key 0x8
+      LEFT:    Key 0x4 (BACK)
+      RIGHT:   Key 0x6 (OK)
+    Displays directional tap counts on screen edges and calls out the active
+    button name and virtual CHIP-8 key code in the center.
+    """
+    return """;;; Button Demo App for Flashiibo FEB (Super-CHIP 128x64 mode)
+;;; Compiled from examples/button_demo/main.c
 ;;;
 ;;; Register mapping:
 ;;;   v0: total_presses
-;;;   v1: last_key
+;;;   v1: last_key (0=init, 2=UP, 8=DOWN, 4=BACK, 6=OK)
 ;;;   v2: up_count
 ;;;   v3: down_count
 ;;;   v4: left_count
 ;;;   v5: right_count
 ;;;   va: pressed key temporary
+;;;   vb: chunk offset (32)
+;;;   vc: X coordinate
+;;;   vd: Y coordinate
 ;;;
 START:
         high                    ; Enable 128x64 high-resolution mode
         cls                     ; Clear screen buffer
         load v0, 0              ; total_presses = 0
-        load v1, 0              ; last_key = 0
+        load v1, 0              ; last_key = 0 (initial/welcome state)
         load v2, 0              ; up_count = 0
         load v3, 0              ; down_count = 0
         load v4, 0              ; left_count = 0
@@ -103,9 +250,9 @@ LOOP:
         add v2, 1
         skip.ne va, 8           ; FEB_KEY_DOWN = 0x8
         add v3, 1
-        skip.ne va, 4           ; FEB_KEY_LEFT = 0x4
+        skip.ne va, 4           ; FEB_KEY_LEFT / BACK = 0x4
         add v4, 1
-        skip.ne va, 6           ; FEB_KEY_RIGHT = 0x6
+        skip.ne va, 6           ; FEB_KEY_RIGHT / OK = 0x6
         add v5, 1
 
         call SAVE_STATE
@@ -118,40 +265,107 @@ SAVE_STATE:
         ret
 
 DRAW_STATE:
+        ;; Top: UP count
         hex v2
-        load vc, 60
+        load vc, 62
         load vd, 10
         draw vc, vd, 5
 
+        ;; Left: BACK / LEFT count
         hex v4
         load vc, 24
-        load vd, 28
+        load vd, 30
         draw vc, vd, 5
 
-        hex v1
-        load vc, 56
-        load vd, 28
-        draw vc, vd, 5
-
-        hex v0
-        load vc, 68
-        load vd, 28
-        draw vc, vd, 5
-
+        ;; Right: OK / RIGHT count
         hex v5
         load vc, 100
-        load vd, 28
+        load vd, 30
         draw vc, vd, 5
 
+        ;; Bottom: DOWN count
         hex v3
-        load vc, 60
-        load vd, 46
+        load vc, 62
+        load vd, 48
         draw vc, vd, 5
+
+        ;; Center: Call out button name and CHIP-8 code
+        call DRAW_CENTER
+        ret
+
+DRAW_CENTER:
+        load vb, 32
+        skip.ne v1, 2
+        jump SET_UP
+        skip.ne v1, 8
+        jump SET_DOWN
+        skip.ne v1, 4
+        jump SET_BACK
+        skip.ne v1, 6
+        jump SET_OK
+        load i, B_INIT_L
+        jump DO_BLIT
+SET_UP:
+        load i, B_UP_L
+        jump DO_BLIT
+SET_DOWN:
+        load i, B_DOWN_L
+        jump DO_BLIT
+SET_BACK:
+        load i, B_BACK_L
+        jump DO_BLIT
+SET_OK:
+        load i, B_OK_L
+DO_BLIT:
+        load vc, 40
+        load vd, 24
+        draw vc, vd, 0          ; Left 16x16 chunk at (40, 24)
+        add i, vb
+        add vc, 16
+        draw vc, vd, 0          ; Mid 16x16 chunk at (56, 24)
+        add i, vb
+        add vc, 16
+        draw vc, vd, 0          ; Right 16x16 chunk at (72, 24)
         ret
 
 MEM_STATE:
         .byte 0, 0, 0, 0, 0, 0
+
+;;; Center Banners (48x16 pixels total, three 16x16 chunks each)
+B_INIT_L:
+        .byte 0x00, 0x00, 0x00, 0x79, 0x00, 0x45, 0x00, 0x45, 0x00, 0x79, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0x00, 0x03, 0xc8, 0x02, 0x28, 0x02, 0x28, 0x03, 0xc8, 0x02, 0x28, 0x02, 0x28, 0x03, 0xc7
+B_INIT_M:
+        .byte 0x00, 0x00, 0xe7, 0xce, 0x14, 0x11, 0x14, 0x10, 0xe7, 0x8e, 0x44, 0x01, 0x24, 0x11, 0x17, 0xce, 0x00, 0x00, 0xbe, 0xf9, 0x88, 0x22, 0x88, 0x22, 0x88, 0x22, 0x88, 0x22, 0x88, 0x22, 0x08, 0x21
+B_INIT_R:
+        .byte 0x00, 0x00, 0x38, 0x00, 0x44, 0x00, 0x40, 0x00, 0x38, 0x00, 0x04, 0x00, 0x44, 0x00, 0x38, 0x00, 0x00, 0x00, 0xc8, 0x80, 0x2c, 0x80, 0x2a, 0x80, 0x29, 0x80, 0x28, 0x80, 0x28, 0x80, 0xc8, 0x80
+B_UP_L:
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28, 0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
+B_UP_M:
+        .byte 0x00, 0x00, 0x22, 0xf0, 0x22, 0x88, 0x22, 0x88, 0x22, 0xf0, 0x22, 0x80, 0x22, 0x80, 0x1c, 0x80, 0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02, 0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
+B_UP_R:
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x9c, 0x28, 0xa2, 0x65, 0x02, 0xa2, 0x04, 0x25, 0x08, 0x28, 0x90, 0xc8, 0xbe
+B_DOWN_L:
+        .byte 0x00, 0x00, 0x00, 0x0e, 0x00, 0x09, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0e, 0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28, 0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
+B_DOWN_M:
+        .byte 0x00, 0x00, 0x1c, 0x8a, 0x22, 0x8b, 0xa2, 0x8a, 0xa2, 0xaa, 0xa2, 0xaa, 0x22, 0xda, 0x1c, 0x8a, 0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02, 0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
+B_DOWN_R:
+        .byte 0x00, 0x00, 0x20, 0x00, 0x20, 0x00, 0xa0, 0x00, 0x60, 0x00, 0x20, 0x00, 0x20, 0x00, 0x20, 0x00, 0x00, 0x00, 0xc8, 0x9c, 0x28, 0xa2, 0x65, 0x22, 0xa2, 0x1c, 0x25, 0x22, 0x28, 0xa2, 0xc8, 0x9c
+B_BACK_L:
+        .byte 0x00, 0x00, 0x00, 0x0f, 0x00, 0x08, 0x00, 0x08, 0x00, 0x0f, 0x00, 0x08, 0x00, 0x08, 0x00, 0x0f, 0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28, 0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
+B_BACK_M:
+        .byte 0x00, 0x00, 0x1c, 0x72, 0xa2, 0x8a, 0xa2, 0x82, 0x3e, 0x83, 0xa2, 0x82, 0xa2, 0x8a, 0x22, 0x72, 0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02, 0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
+B_BACK_R:
+        .byte 0x00, 0x00, 0x20, 0x00, 0x40, 0x00, 0x80, 0x00, 0x00, 0x00, 0x80, 0x00, 0x40, 0x00, 0x20, 0x00, 0x00, 0x00, 0xc8, 0x84, 0x28, 0x8c, 0x65, 0x14, 0xa2, 0x24, 0x25, 0x3e, 0x28, 0x84, 0xc8, 0x84
+B_OK_L:
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x71, 0xce, 0x8a, 0x29, 0x82, 0x28, 0x82, 0x28, 0x82, 0x28, 0x8a, 0x29, 0x71, 0xce
+B_OK_M:
+        .byte 0x00, 0x00, 0x1c, 0x88, 0x22, 0x90, 0x22, 0xa0, 0x22, 0xc0, 0x22, 0xa0, 0x22, 0x90, 0x1c, 0x88, 0x00, 0x00, 0x3e, 0x01, 0x20, 0x02, 0xa0, 0x02, 0xbc, 0x02, 0xa0, 0x03, 0x20, 0x02, 0x3e, 0x01
+B_OK_R:
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x8c, 0x28, 0x90, 0x65, 0x20, 0xa2, 0x3c, 0x25, 0x22, 0x28, 0xa2, 0xc8, 0x9c
 """
+
+# Backward compatibility alias
+generate_button_test_asm = generate_button_demo_asm
 
 def generate_template_asm():
     """

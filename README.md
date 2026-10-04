@@ -106,8 +106,12 @@ feb-sdk/
 │   ├── 2048/              <-- Full 2048 puzzle game implementation (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
-│   ├── button_test/       <-- Hardware 4-button input test & press counter (128x64)
+│   ├── button_demo/       <-- Hardware 4-button input demo & press counter (128x64)
 │   │   ├── main.c
+│   │   └── Makefile
+│   ├── features_demo/     <-- Custom VM extensions showcase: geometry, text, vsync, getkeys (128x64)
+│   │   ├── main.c
+│   │   ├── main.asm
 │   │   └── Makefile
 │   └── template/          <-- Starter template with 4-way movement (128x64)
 │       ├── main.c
@@ -129,16 +133,37 @@ Include the C SDK header in your application:
 #include "feb.h"
 ```
 
-### Display (Default: 128×64 Super-CHIP Mode)
+### Display & Drawing Modes (Default: 128×64 Super-CHIP Mode)
 - `void feb_set_high_res(bool enable);`: Switches between 128×64 high-resolution mode (`true`, default) and legacy 64×32 mode (`false`).
 - `void feb_clear_screen(void);`: Clears the display buffer.
+- `void feb_set_draw_mode(uint8_t mode);`: Sets active draw mode (`FEB_DRAW_MODE_XOR`, `SET`, `CLEAR`, `OPAQUE`, or `INVERTED_OPAQUE`).
 - `bool feb_draw_sprite(uint8_t x, uint8_t y, const uint8_t *sprite, uint8_t height);`: XOR draws an 8-pixel wide sprite of height 1..15. Calling it a second time at the same position erases the sprite. Returns `true` if a collision occurred.
 - `bool feb_draw_sprite16(uint8_t x, uint8_t y, const uint8_t *sprite);`: XOR draws a 16×16 pixel sprite in 128×64 mode (32 bytes). Returns `true` if a collision occurred.
 - `void feb_draw_digit(uint8_t x, uint8_t y, uint8_t digit);`: Renders built-in hex digit (0..15).
 
-### Input
+### Fast Geometric Primitives & Collision
+- `void feb_draw_pixel(uint8_t x, uint8_t y);`: Plots single pixel at `(x, y)` using active draw mode.
+- `void feb_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);`: Draws line via Bresenham's algorithm.
+- `void feb_draw_hline(uint8_t x, uint8_t y, uint8_t len);`: Draws fast horizontal line.
+- `void feb_draw_vline(uint8_t x, uint8_t y, uint8_t len);`: Draws fast vertical line.
+- `void feb_draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws outline rectangle.
+- `void feb_fill_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws filled solid rectangle.
+- `void feb_draw_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws outline circle.
+- `void feb_fill_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws filled solid circle.
+- `bool feb_test_pixel(uint8_t x, uint8_t y);`: Non-destructive zero-RAM collision test against framebuffer pixels.
+
+### Typography & Number Formatting
+- `uint8_t feb_draw_string(uint8_t x, uint8_t y, const char *str, uint8_t font_id);`: Renders ASCII string; advances X.
+- `uint8_t feb_draw_char(uint8_t x, uint8_t y, char ch, uint8_t font_id);`: Renders single ASCII character; advances X.
+- `uint8_t feb_string_width(const char *str, uint8_t font_id);`: Measures pixel width of string.
+- `uint8_t feb_draw_number(uint8_t x, uint8_t y, uint16_t num, uint8_t font_id);`: Formats 16-bit integer (0..65535); advances X.
+- *Fonts:* `FEB_FONT_4X6` (0), `FEB_FONT_6X10` (1, default UI), `FEB_FONT_RETRO_8X8` (2).
+
+### Input & Frame Synchronization
+- `void feb_wait_vsync(void);`: Yields execution until next 60 Hz hardware tick for tear-free 60 FPS animation.
+- `uint8_t feb_get_keys(void);`: Non-blocking instantaneous bitmask of 4 physical buttons (`FEB_BTN_UP`, `FEB_BTN_DOWN`, `FEB_BTN_LEFT`, `FEB_BTN_RIGHT`).
 - `uint8_t feb_wait_key(void);`: Blocks until a button is pressed; returns key code (`0x2`, `0x8`, `0x4`, `0x6`).
-- `bool feb_is_key_down(uint8_t key);`: Non-blocking check if a button is currently held.
+- `bool feb_is_key_down(uint8_t key);`: Checks if a specific key is held.
 
 ### Timing & Randomness
 - `uint8_t feb_rand(uint8_t mask);`: Returns pseudo-random 8-bit integer masked with `mask`.

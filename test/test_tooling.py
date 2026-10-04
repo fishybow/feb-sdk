@@ -46,6 +46,71 @@ class TestAssembleChip8(unittest.TestCase):
         code = assemble_chip8.assemble(asm)
         self.assertEqual(code, bytes([0x00, 0xFF, 0x00, 0xFE, 0xF5, 0x30, 0xF3, 0x75, 0xF7, 0x85]))
 
+    def test_assemble_custom_geometry_instructions(self):
+        asm = """
+        START:
+            pixel v0
+            line v1
+            hline v2
+            vline v3
+            rect v4
+            fillrect v5
+            circle v6
+            disc v7
+        """
+        code = assemble_chip8.assemble(asm)
+        expected = bytes([
+            0xF0, 0x90,  # pixel v0
+            0xF1, 0x91,  # line v1
+            0xF2, 0x92,  # hline v2
+            0xF3, 0x93,  # vline v3
+            0xF4, 0x94,  # rect v4
+            0xF5, 0x95,  # fillrect v5
+            0xF6, 0x96,  # circle v6
+            0xF7, 0x97,  # disc v7
+        ])
+        self.assertEqual(code, expected)
+
+    def test_assemble_custom_features_instructions(self):
+        asm = """
+        START:
+            drawmode v1
+            testpixel v2
+            vsync
+            vsync v3
+            num v4
+            getkeys v5
+        """
+        code = assemble_chip8.assemble(asm)
+        expected = bytes([
+            0xF1, 0x98,  # drawmode v1
+            0xF2, 0x99,  # testpixel v2
+            0xF0, 0x9A,  # vsync (default v0)
+            0xF3, 0x9A,  # vsync v3
+            0xF4, 0xA3,  # num v4
+            0xF5, 0xB0,  # getkeys v5
+        ])
+        self.assertEqual(code, expected)
+
+    def test_assemble_custom_typography_instructions(self):
+        asm = """
+        START:
+            text v1
+            char v2
+            textlen v3
+            .ascii "HI"
+            .asciz "OK"
+        """
+        code = assemble_chip8.assemble(asm)
+        expected = bytes([
+            0xF1, 0xA0,  # text v1
+            0xF2, 0xA1,  # char v2
+            0xF3, 0xA2,  # textlen v3
+            0x48, 0x49,  # 'H', 'I'
+            0x4F, 0x4B, 0x00, # 'O', 'K', '\0'
+        ])
+        self.assertEqual(code, expected)
+
 class TestMakeFeb(unittest.TestCase):
     def test_header_structure_and_magic(self):
         payload = bytes([0x00, 0xE0, 0x00, 0xEE])
@@ -115,11 +180,17 @@ class TestFebBuild(unittest.TestCase):
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 78)
 
-    def test_build_button_test_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "button_test", "main.c")
+    def test_build_button_demo_c(self):
+        c_path = os.path.join(REPO_ROOT, "examples", "button_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 112)
+        self.assertEqual(len(bytecode), 634)
+
+    def test_build_features_demo_c(self):
+        c_path = os.path.join(REPO_ROOT, "examples", "features_demo", "main.c")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 207)
 
 if __name__ == "__main__":
     unittest.main()

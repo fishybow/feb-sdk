@@ -1,14 +1,14 @@
-# Makefile for Flashiibo FEB Application: Button Test
+# Makefile for Flashiibo FEB Application: Button Demo
 # Targets the Flashiibo Gen3 FEB runtime (Beta / Experimental).
 
 PYTHON ?= python3
 BUILD_TOOL = ../../tools/feb_build.py
 
-APP_TITLE = Button Test
+APP_TITLE = Button Demo
 APP_AUTHOR = Flashiibo
 APP_VER = 1.0.0
 
-TARGET = button_test.feb
+TARGET = button_demo.feb
 
 .PHONY: all clean install
 

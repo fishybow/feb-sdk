@@ -14,12 +14,22 @@ import os
 import argparse
 import re
 
+def parse_string_directive(token):
+    s = token.strip()
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1]
+        return s.encode('utf-8').decode('unicode_escape').encode('latin1')
+    return s.encode('utf-8')
+
 def parse_val(token, labels=None):
     if labels is None:
         labels = {}
     token = token.strip()
     if token in labels:
         return labels[token]
+    if (token.startswith("'") and token.endswith("'") and len(token) >= 3):
+        content = token[1:-1].encode('utf-8').decode('unicode_escape')
+        return ord(content[0])
     if token.startswith("$"):
         # Binary literal in Chip8 1.1 syntax (e.g. $11 = 3, $11111111 = 255)
         return int(token[1:], 2)
@@ -66,6 +76,12 @@ def assemble(asm_text):
             pc += len(args)
         elif mnem == ".ds":
             pc += parse_val(rest)
+        elif mnem == ".ascii":
+            data = parse_string_directive(rest)
+            pc += len(data)
+        elif mnem in (".asciz", ".string"):
+            data = parse_string_directive(rest) + b"\x00"
+            pc += len(data)
         else:
             pc += 2
 
@@ -97,6 +113,14 @@ def assemble(asm_text):
                 count = parse_val(args[0], labels)
                 binary.extend(b"\x00" * count)
                 pc += count
+            elif mnem == ".ascii":
+                data = parse_string_directive(rest)
+                binary.extend(data)
+                pc += len(data)
+            elif mnem in (".asciz", ".string"):
+                data = parse_string_directive(rest) + b"\x00"
+                binary.extend(data)
+                pc += len(data)
             elif mnem == "cls":
                 binary.extend((0x00, 0xE0))
                 pc += 2
@@ -231,6 +255,78 @@ def assemble(asm_text):
             elif mnem in ("loadflags", "load.flags"):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0x85))
+                pc += 2
+            elif mnem == "pixel":
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x90))
+                pc += 2
+            elif mnem == "line":
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x91))
+                pc += 2
+            elif mnem == "hline":
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x92))
+                pc += 2
+            elif mnem == "vline":
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x93))
+                pc += 2
+            elif mnem == "rect":
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x94))
+                pc += 2
+            elif mnem in ("fillrect", "frect"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x95))
+                pc += 2
+            elif mnem == "circle":
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x96))
+                pc += 2
+            elif mnem in ("disc", "fillcircle"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x97))
+                pc += 2
+            elif mnem in ("drawmode", "setdrawmode"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x98))
+                pc += 2
+            elif mnem == "testpixel":
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x99))
+                pc += 2
+            elif mnem == "vsync":
+                x = parse_reg(args[0]) if args else 0
+                binary.extend(((0xF0 | x), 0x9A))
+                pc += 2
+            elif mnem in ("text", "drawstr"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0xA0))
+                pc += 2
+            elif mnem in ("char", "drawchar"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0xA1))
+                pc += 2
+            elif mnem in ("textlen", "strlen"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0xA2))
+                pc += 2
+            elif mnem in ("num", "drawnum"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0xA3))
+                pc += 2
+            elif mnem in ("getkeys", "keys"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0xB0))
+                pc += 2
+            elif mnem in ("skip.key", "skip.pressed"):
+                x = parse_reg(args[0])
+                binary.extend(((0xE0 | x), 0x9E))
+                pc += 2
+            elif mnem in ("skip.notkey", "skip.nkey", "skip.notpressed"):
+                x = parse_reg(args[0])
+                binary.extend(((0xE0 | x), 0xA1))
                 pc += 2
             else:
                 raise ValueError(f"Unknown mnemonic: '{mnem}'")
