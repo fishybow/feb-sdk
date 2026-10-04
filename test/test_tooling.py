@@ -33,7 +33,7 @@ class TestAssembleChip8(unittest.TestCase):
         asm = feb_build.compile_c_to_asm(c_path)
         code = assemble_chip8.assemble(asm)
         self.assertGreater(len(code), 50)
-        self.assertEqual(len(code), 206)
+        self.assertEqual(len(code), 158)
 
     def test_assemble_schip_instructions(self):
         asm = """
@@ -175,7 +175,7 @@ class TestFebBuild(unittest.TestCase):
                 version="1.0.0",
                 payload=bytecode
             )
-            self.assertEqual(len(feb_data), 96 + 623)
+            self.assertEqual(len(feb_data), 96 + 1030)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
@@ -184,7 +184,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "template", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 206)
+        self.assertEqual(len(bytecode), 158)
 
     def test_build_button_demo_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "button_demo", "main.c")
@@ -196,12 +196,12 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "features_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 423)
+        self.assertEqual(len(bytecode), 375)
 
     def test_modular_compiler_equivalence(self):
         import compiler
         import c_compiler
-        for app in ["template", "button_demo", "features_demo"]:
+        for app in ["template", "button_demo", "features_demo", "2048"]:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm_mod = compiler.compile_c_to_asm(c_path)
             asm_facade = c_compiler.compile_c_to_asm(c_path)

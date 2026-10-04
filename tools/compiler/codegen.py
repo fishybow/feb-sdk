@@ -178,9 +178,12 @@ __DIVMOD8_NO_SUB:
         stype = stmt.get("type")
         if stype == "decl":
             var = stmt["var"]
-            if var not in locals_map and reg_idx < len(reg_avail):
-                locals_map[var] = reg_avail[reg_idx]
-                reg_idx += 1
+            if var not in locals_map:
+                if reg_idx < len(reg_avail):
+                    locals_map[var] = reg_avail[reg_idx]
+                    reg_idx += 1
+                else:
+                    raise ValueError(f"Too many local variables: '{var}' exceeds maximum {len(reg_avail)} registers (v1..v9)")
         elif stype == "block":
             for s in stmt["statements"]:
                 reg_idx = self.collect_locals(s, locals_map, reg_avail, reg_idx)
@@ -730,6 +733,28 @@ __DIVMOD8_NO_SUB:
                         out.append(f"        jump {target_label}")
                     return
 
+                elif op in ("<", "<=", ">", ">="):
+                    out.append(f"        load vb, {val}")
+                    if op == "<":
+                        out.append(f"        load ve, {reg}")
+                        out.append("        sub ve, vb")
+                        skip_op = "skip.ne" if jump_if_true else "skip.eq"
+                    elif op == ">=":
+                        out.append(f"        load ve, {reg}")
+                        out.append("        sub ve, vb")
+                        skip_op = "skip.eq" if jump_if_true else "skip.ne"
+                    elif op == "<=":
+                        out.append("        load ve, vb")
+                        out.append(f"        sub ve, {reg}")
+                        skip_op = "skip.eq" if jump_if_true else "skip.ne"
+                    else:  # >
+                        out.append("        load ve, vb")
+                        out.append(f"        sub ve, {reg}")
+                        skip_op = "skip.ne" if jump_if_true else "skip.eq"
+                    out.append(f"        {skip_op} vf, 0")
+                    out.append(f"        jump {target_label}")
+                    return
+
             # General comparison
             self.compile_expr_into(left, "va", ctx)
             self.compile_expr_into(right, "vb", ctx)
@@ -749,14 +774,24 @@ __DIVMOD8_NO_SUB:
                     out.append(f"        skip.ne va, vb")
                     out.append(f"        jump {target_label}")
             elif op in ("<", "<=", ">", ">="):
-                # Fall back to evaluating comparison expression
-                self.compile_expr_into(cond, "v0", ctx)
-                if jump_if_true:
-                    out.append(f"        skip.eq v0, 0")
-                    out.append(f"        jump {target_label}")
-                else:
-                    out.append(f"        skip.ne v0, 0")
-                    out.append(f"        jump {target_label}")
+                if op == "<":
+                    out.append("        load ve, va")
+                    out.append("        sub ve, vb")
+                    skip_op = "skip.ne" if jump_if_true else "skip.eq"
+                elif op == ">=":
+                    out.append("        load ve, va")
+                    out.append("        sub ve, vb")
+                    skip_op = "skip.eq" if jump_if_true else "skip.ne"
+                elif op == "<=":
+                    out.append("        load ve, vb")
+                    out.append("        sub ve, va")
+                    skip_op = "skip.eq" if jump_if_true else "skip.ne"
+                else:  # >
+                    out.append("        load ve, vb")
+                    out.append("        sub ve, va")
+                    skip_op = "skip.ne" if jump_if_true else "skip.eq"
+                out.append(f"        {skip_op} vf, 0")
+                out.append(f"        jump {target_label}")
             return
 
         # General boolean condition: non-zero = true, zero = false
