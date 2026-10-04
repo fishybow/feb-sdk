@@ -111,6 +111,16 @@ Returns the current value of the 60 Hz delay timer register.
 #### `void feb_delay_frames(uint8_t frames);`
 Blocks execution for `frames` screen frames (~16.6 ms per frame).
 
+### 3.4 Persistent Storage (Sidecar `.sav`)
+
+Executable `.feb` files are strictly read-only. User save data, high scores, and settings are automatically persisted to `/feb/saves/<app_name>.sav` upon exit.
+
+#### `void feb_save_flags(const uint8_t *data, uint8_t len);`
+Saves up to 16 bytes of persistent application state (mapped to Super-CHIP RPL user flags). Flushed to the companion `.sav` file when the app closes.
+
+#### `void feb_load_flags(uint8_t *data, uint8_t len);`
+Loads up to 16 bytes of persistent application state previously saved by `feb_save_flags`.
+
 ---
 
 ## 4. Examples & Starter Template

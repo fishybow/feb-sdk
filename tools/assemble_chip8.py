@@ -224,6 +224,14 @@ def assemble(asm_text):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0x65))
                 pc += 2
+            elif mnem in ("saveflags", "save.flags"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x75))
+                pc += 2
+            elif mnem in ("loadflags", "load.flags"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x85))
+                pc += 2
             else:
                 raise ValueError(f"Unknown mnemonic: '{mnem}'")
         except Exception as e:

@@ -152,6 +152,28 @@ uint8_t feb_get_delay_timer(void);
  */
 void feb_delay_frames(uint8_t frames);
 
+/* -------------------------------------------------------------------------
+ * Persistent Storage API (Sidecar .sav in /feb/saves/)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * @brief Saves up to 16 bytes of persistent application state (mapped to Super-CHIP RPL flags FX75).
+ * Automatically flushed to /feb/saves/<app_name>.sav on application exit.
+ *
+ * @param data Pointer to buffer of bytes to persist (up to 16 bytes)
+ * @param len Number of bytes to save (1..16)
+ */
+void feb_save_flags(const uint8_t *data, uint8_t len);
+
+/**
+ * @brief Loads up to 16 bytes of persistent application state (mapped to Super-CHIP RPL flags FX85).
+ * Reads from /feb/saves/<app_name>.sav.
+ *
+ * @param data Destination buffer to receive persistent bytes (up to 16 bytes)
+ * @param len Number of bytes to load (1..16)
+ */
+void feb_load_flags(uint8_t *data, uint8_t len);
+
 #ifdef __cplusplus
 }
 #endif

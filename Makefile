@@ -1,7 +1,7 @@
 # Flashiibo FEB (Flashiibo Executable Binary) Root Makefile
 # Targets the Flashiibo Gen3 FEB runtime (Beta & Experimental).
 
-EXAMPLES := 2048 template
+EXAMPLES := 2048 template button_test
 BUILD_DIR := build
 
 .PHONY: all clean test $(EXAMPLES)

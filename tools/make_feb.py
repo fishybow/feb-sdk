@@ -20,8 +20,13 @@ FEB_VERSION = 1
 FEB_TYPE_CHIP8 = 0
 
 FEB_FLAG_NONE = 0x0000
-FEB_FLAG_HIGH_SCORE = 0x0001
-FEB_FLAG_IS_MINI_APP = 0x0002
+FEB_FLAG_IS_MINI_APP = 0x0001
+
+# Sidecar Save Specification (.sav)
+FEB_SAVE_MAGIC = 0x56415346 # 'FSAV' (little-endian ASCII)
+FEB_SAVE_VERSION = 1
+FEB_SAVE_FLAG_NONE = 0x0000
+FEB_SAVE_FLAG_HIGH_SCORE = 0x0001
 
 # Default 16x16 icon for 2048 (4x4 mini-grid)
 ICON_2048_16x16 = bytes([
@@ -59,7 +64,7 @@ ICON_APP_16x16 = bytes([
     0x00, 0x00, 0x3c, 0x3c, 0x24, 0x24, 0x3c, 0x3c
 ])
 
-def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b"", icon=None, high_score=0, is_mini_app=False):
+def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b"", icon=None, is_mini_app=False):
     if icon is None or len(icon) != 32:
         if is_mini_app:
             icon = ICON_APP_16x16
@@ -71,8 +76,6 @@ def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b""
     magic = FEB_MAGIC
     format_version = FEB_VERSION
     flags = FEB_FLAG_NONE
-    if high_score > 0:
-        flags |= FEB_FLAG_HIGH_SCORE
     if is_mini_app:
         flags |= FEB_FLAG_IS_MINI_APP
 
@@ -93,11 +96,10 @@ def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b""
     # char   version[8] (8B)
     # uint8  icon[32] (32B)
     # uint32 payload_size (4B)
-    # uint32 high_score (4B)
     # uint32 crc32 (4B)
-    # Total: 100 bytes
+    # Total: 96 bytes
     header = struct.pack(
-        "<IBBH24s16s8s32sIII",
+        "<IBBH24s16s8s32sII",
         magic,
         format_version,
         app_type,
@@ -107,12 +109,36 @@ def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b""
         version_bytes,
         icon,
         payload_size,
-        high_score,
         crc32
     )
 
-    assert len(header) == 100, f"Header size is {len(header)}, expected 100"
+    assert len(header) == 96, f"Header size is {len(header)}, expected 96"
     return header + payload
+
+def create_save(high_score=0, rpl_flags=None, extra_data=b""):
+    if rpl_flags is None:
+        rpl_flags = b"\x00" * 16
+    elif len(rpl_flags) < 16:
+        rpl_flags = bytes(rpl_flags).ljust(16, b"\x00")
+    else:
+        rpl_flags = bytes(rpl_flags[:16])
+
+    flags = FEB_SAVE_FLAG_NONE
+    if high_score > 0:
+        flags |= FEB_SAVE_FLAG_HIGH_SCORE
+
+    header = struct.pack(
+        "<IHHI16sHH",
+        FEB_SAVE_MAGIC,
+        FEB_SAVE_VERSION,
+        flags,
+        high_score,
+        rpl_flags,
+        len(extra_data),
+        0
+    )
+    assert len(header) == 32, f"Save header size is {len(header)}, expected 32"
+    return header + extra_data
 
 def main():
     parser = argparse.ArgumentParser(
@@ -124,7 +150,6 @@ def main():
     parser.add_argument("--author", default="Flashiibo", help="Author string")
     parser.add_argument("--ver", default="1.0.0", help="Version string")
     parser.add_argument("--payload", default=None, help="Path to binary payload (e.g. .ch8 bytecode)")
-    parser.add_argument("--high-score", type=int, default=0, help="Initial high score / state")
     parser.add_argument("--app", action="store_true", help="Mark executable as a mini-app (instead of game)")
 
     args = parser.parse_args()
@@ -142,7 +167,6 @@ def main():
         author=args.author,
         version=args.ver,
         payload=payload_bytes,
-        high_score=args.high_score,
         is_mini_app=args.app
     )
 
@@ -150,7 +174,7 @@ def main():
     with open(args.output, "wb") as f:
         f.write(feb_data)
 
-    print(f"Created {args.output} ({len(feb_data)} bytes: 100B header + {len(payload_bytes)}B payload, type: {args.type})")
+    print(f"Created {args.output} ({len(feb_data)} bytes: 96B header + {len(payload_bytes)}B payload, type: {args.type})")
 
 if __name__ == "__main__":
     main()

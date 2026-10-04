@@ -104,6 +104,9 @@ feb-sdk/
 │   ├── 2048/              <-- Full 2048 puzzle game implementation (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
+│   ├── button_test/       <-- Hardware 4-button input test & press counter (128x64)
+│   │   ├── main.c
+│   │   └── Makefile
 │   └── template/          <-- Starter template with 4-way movement (128x64)
 │       ├── main.c
 │       ├── main.asm

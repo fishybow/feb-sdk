@@ -46,15 +46,112 @@ def compile_c_to_asm(c_source_path):
     if "template" in c_source_path or "player_sprite" in c_code:
         return generate_template_asm()
 
+    # Button test app
+    if "button_test" in c_source_path or "button_test" in c_code or "total_presses" in c_code:
+        return generate_button_test_asm()
+
     raise ValueError(
         f"[FEB_BUILD] No compiler target found for '{c_source_path}'.\n"
         f"NOTE: The Flashiibo C SDK is currently in BETA & EXPERIMENTAL status.\n"
         f"To compile an app, you can:\n"
-        f"  1. Target a supported model ('2048', 'template')\n"
+        f"  1. Target a supported model ('2048', 'template', 'button_test')\n"
         f"  2. Embed inline assembly in your C file using /* __FEB_ASM__ ... __FEB_ASM_END__ */\n"
         f"  3. Compile a raw .asm file directly: python3 feb_build.py app.asm -o app.feb\n"
         f"Breaking changes may happen without warning."
     )
+
+def generate_button_test_asm():
+    """
+    Returns the CHIP-8 assembly representation of the button test application:
+      UP:      Key 2
+      DOWN:    Key 8
+      LEFT:    Key 4 (BACK)
+      RIGHT:   Key 6 (CONFIRM)
+    Tracks total presses and per-button counts, saving state to MEM_STATE.
+    """
+    return """;;; Button Test App for Flashiibo FEB (Super-CHIP 128x64 mode)
+;;; Compiled from examples/button_test/main.c
+;;;
+;;; Register mapping:
+;;;   v0: total_presses
+;;;   v1: last_key
+;;;   v2: up_count
+;;;   v3: down_count
+;;;   v4: left_count
+;;;   v5: right_count
+;;;   va: pressed key temporary
+;;;
+START:
+        high                    ; Enable 128x64 high-resolution mode
+        cls                     ; Clear screen buffer
+        load v0, 0              ; total_presses = 0
+        load v1, 0              ; last_key = 0
+        load v2, 0              ; up_count = 0
+        load v3, 0              ; down_count = 0
+        load v4, 0              ; left_count = 0
+        load v5, 0              ; right_count = 0
+        call SAVE_STATE
+        call DRAW_STATE
+
+LOOP:
+        load va, key            ; Wait for key press (0xFX0A)
+        call DRAW_STATE         ; XOR erase previous state
+        add v0, 1               ; total_presses++
+        load v1, va             ; last_key = key
+
+        skip.ne va, 2           ; FEB_KEY_UP = 0x2
+        add v2, 1
+        skip.ne va, 8           ; FEB_KEY_DOWN = 0x8
+        add v3, 1
+        skip.ne va, 4           ; FEB_KEY_LEFT = 0x4
+        add v4, 1
+        skip.ne va, 6           ; FEB_KEY_RIGHT = 0x6
+        add v5, 1
+
+        call SAVE_STATE
+        call DRAW_STATE
+        jump LOOP
+
+SAVE_STATE:
+        load i, MEM_STATE
+        save v5                 ; Stores v0..v5 into MEM_STATE
+        ret
+
+DRAW_STATE:
+        hex v2
+        load vc, 60
+        load vd, 10
+        draw vc, vd, 5
+
+        hex v4
+        load vc, 24
+        load vd, 28
+        draw vc, vd, 5
+
+        hex v1
+        load vc, 56
+        load vd, 28
+        draw vc, vd, 5
+
+        hex v0
+        load vc, 68
+        load vd, 28
+        draw vc, vd, 5
+
+        hex v5
+        load vc, 100
+        load vd, 28
+        draw vc, vd, 5
+
+        hex v3
+        load vc, 60
+        load vd, 46
+        draw vc, vd, 5
+        ret
+
+MEM_STATE:
+        .byte 0, 0, 0, 0, 0, 0
+"""
 
 def generate_template_asm():
     """
@@ -499,7 +596,6 @@ def main():
     parser.add_argument("--title", required=True, help="Display title (max 23 chars)")
     parser.add_argument("--author", default="Flashiibo", help="Author string")
     parser.add_argument("--ver", default="1.0.0", help="Version string")
-    parser.add_argument("--high-score", type=int, default=0, help="Initial high score")
     parser.add_argument("--app", action="store_true", help="Mark as mini app")
     args = parser.parse_args()
 
@@ -533,7 +629,6 @@ def main():
         author=args.author,
         version=args.ver,
         payload=bytecode,
-        high_score=args.high_score,
         is_mini_app=args.app
     )
 

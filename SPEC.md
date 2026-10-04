@@ -18,7 +18,7 @@ The `.feb` (Flashiibo Executable Binary) format is a lightweight, sandboxed exec
 
 ---
 
-## 2. Header Layout (Exactly 100 Bytes, Packed Little-Endian)
+## 2. Header Layout (Exactly 96 Bytes, Packed Little-Endian)
 
 ```
  0                   1                   2                   3
@@ -42,9 +42,7 @@ The `.feb` (Flashiibo Executable Binary) format is a lightweight, sandboxed exec
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                         Payload Size                          |  [88..91]
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                 High Score / Persistent State                 |  [92..95]
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                            CRC-32                             |  [96..99]
+|                            CRC-32                             |  [92..95]
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                       Executable Payload                      |
 |                  (Bytecode: 0..3584 Bytes)                    |
@@ -58,18 +56,56 @@ The `.feb` (Flashiibo Executable Binary) format is a lightweight, sandboxed exec
 | `0..3` | `magic` | `uint32_t` | Fixed magic `0x4245462E` (`.FEB` in little-endian ASCII) |
 | `4` | `format_version` | `uint8_t` | Format version (currently `1`) |
 | `5` | `app_type` | `uint8_t` | Virtual machine bytecode type (`0` = CHIP-8) |
-| `6..7` | `flags` | `uint16_t` | Bitmask flags: Bit 0 = high score valid, Bit 1 = mini-app |
+| `6..7` | `flags` | `uint16_t` | Bitmask flags: Bit 0 (`0x0001`) = `FEB_FLAG_IS_MINI_APP` |
 | `8..31` | `title` | `char[24]` | UTF-8 null-terminated application display title |
 | `32..47`| `author` | `char[16]` | UTF-8 null-terminated author string |
 | `48..55`| `version` | `char[8]` | Semantic version string (e.g. `"1.0.0"`) |
 | `56..87`| `icon` | `uint8_t[32]` | 16×16 monochrome 1-bit icon bitmap |
 | `88..91`| `payload_size` | `uint32_t` | Byte length of payload following header |
-| `92..95`| `high_score` | `uint32_t` | Persistent high score or state |
-| `96..99`| `crc32` | `uint32_t` | Optional CRC-32 checksum of the payload |
+| `92..95`| `crc32` | `uint32_t` | Optional CRC-32 checksum of the payload |
 
 ---
 
-## 3. Hardware Button Contract
+## 3. Persistent Storage Specification (`.sav` Sidecar Files)
+
+Executable `.feb` binaries are strictly **read-only and immutable** on flash storage.
+Persistent user state (scores, progression, and settings) is stored in a dedicated companion save file under `/feb/saves/<app_name>.sav`.
+
+### 3.1 Save File Header Layout (Exactly 32 Bytes, Packed Little-Endian)
+
+```
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Magic: 'FSAV'                           |  [0..3]
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Format Version|             Flags             |   Reserved    |  [4..7]
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                 High Score / Persistent State                 |  [8..11]
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++      Super-CHIP / XO-CHIP Persistent RPL Flags (16 Bytes)     +  [12..27]
+|                      (FX75 / FX85 Opcodes)                    |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           Extra Length        |           Reserved            |  [28..31]
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Optional Extra Data                     |
+|                           (0..512 B)                          |
+```
+
+| Offset | Field | Type | Description |
+|---|---|---|---|
+| `0..3` | `magic` | `uint32_t` | Fixed magic `0x56415346` (`FSAV` in little-endian ASCII) |
+| `4..5` | `format_version` | `uint16_t` | Save format version (`1`) |
+| `6..7` | `flags` | `uint16_t` | Bitmask flags: Bit 0 = `high_score` valid |
+| `8..11`| `high_score` | `uint32_t` | Quick-access 32-bit score / state |
+| `12..27`| `rpl_flags` | `uint8_t[16]` | Super-CHIP and XO-CHIP persistent user flags (`FX75`/`FX85`) |
+| `28..29`| `extra_len` | `uint16_t` | Length of optional trailing data (0..512 bytes) |
+| `30..31`| `reserved` | `uint16_t` | Header alignment padding |
+
+---
+
+## 4. Hardware Button Contract
 
 Flashiibo Gen3 features four physical buttons:
 
