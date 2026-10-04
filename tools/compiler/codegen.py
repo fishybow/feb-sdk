@@ -280,8 +280,6 @@ __DIVMOD8_NO_SUB:
             out.append(f"{lbl_end}:")
             ctx["break_label"] = old_break
             ctx["continue_label"] = old_cont
-            out.append(f"{lbl_end}:")
-            ctx["break_label"] = old_break
         elif stype == "switch":
             lbl_end = self.new_label("SWITCH_END")
             old_break = ctx["break_label"]

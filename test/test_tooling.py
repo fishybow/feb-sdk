@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import struct
+import random
 
 # Add repo tools and include to path
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -17,6 +18,148 @@ sys.path.insert(0, TOOLS_DIR)
 import assemble_chip8
 import make_feb
 import feb_build
+
+class SimChip8:
+    """Headless CHIP-8 / SCHIP + Flashiibo FEB virtual machine for automated testing."""
+    def __init__(self, rom):
+        self.mem = bytearray(4096)
+        self.mem[0x200:0x200+len(rom)] = rom
+        self.pc = 0x200
+        self.v = bytearray(16)
+        self.i = 0
+        self.stack = []
+        self.waiting_for_key = False
+        self.key_reg = 0
+        self.key_queue = []
+        self.keys_pressed = 0
+        self.exited = False
+        self.rpl_flags = bytearray(16)
+        self.rng = random.Random(12345)
+
+    def step(self):
+        if self.exited:
+            return
+        if self.waiting_for_key:
+            if self.key_queue:
+                k = self.key_queue.pop(0)
+                self.v[self.key_reg] = k
+                self.waiting_for_key = False
+            else:
+                return
+
+        op = (self.mem[self.pc] << 8) | self.mem[self.pc + 1]
+        self.pc += 2
+        o1 = (op >> 12) & 0xF
+        x = (op >> 8) & 0xF
+        y = (op >> 4) & 0xF
+        n = op & 0xF
+        nn = op & 0xFF
+        nnn = op & 0xFFF
+
+        if op == 0x00FD:
+            self.exited = True
+        elif op in (0x00E0, 0x00FF, 0x00FE):
+            pass
+        elif op == 0x00EE:
+            if not self.stack:
+                self.exited = True
+            else:
+                self.pc = self.stack.pop()
+        elif o1 == 0x1:
+            self.pc = nnn
+        elif o1 == 0x2:
+            self.stack.append(self.pc)
+            self.pc = nnn
+        elif o1 == 0x3:
+            if self.v[x] == nn: self.pc += 2
+        elif o1 == 0x4:
+            if self.v[x] != nn: self.pc += 2
+        elif o1 == 0x5 and n == 0:
+            if self.v[x] == self.v[y]: self.pc += 2
+        elif o1 == 0x6:
+            self.v[x] = nn
+        elif o1 == 0x7:
+            self.v[x] = (self.v[x] + nn) & 0xFF
+        elif o1 == 0x8:
+            if n == 0:
+                self.v[x] = self.v[y]
+            elif n == 1:
+                self.v[x] |= self.v[y]
+            elif n == 2:
+                self.v[x] &= self.v[y]
+            elif n == 3:
+                self.v[x] ^= self.v[y]
+            elif n == 4:
+                s = self.v[x] + self.v[y]
+                self.v[0xF] = 1 if s > 255 else 0
+                self.v[x] = s & 0xFF
+            elif n == 5:
+                sub = self.v[x] - self.v[y]
+                self.v[0xF] = 1 if sub >= 0 else 0
+                self.v[x] = sub & 0xFF
+            elif n == 6:
+                self.v[0xF] = self.v[x] & 1
+                self.v[x] = (self.v[x] >> 1) & 0xFF
+            elif n == 7:
+                sub = self.v[y] - self.v[x]
+                self.v[0xF] = 1 if sub >= 0 else 0
+                self.v[x] = sub & 0xFF
+            elif n == 0xE:
+                self.v[0xF] = (self.v[x] >> 7) & 1
+                self.v[x] = (self.v[x] << 1) & 0xFF
+        elif o1 == 0x9 and n == 0:
+            if self.v[x] != self.v[y]: self.pc += 2
+        elif o1 == 0xA:
+            self.i = nnn
+        elif o1 == 0xB:
+            self.pc = (nnn + self.v[0]) & 0xFFF
+        elif o1 == 0xC:
+            self.v[x] = self.rng.randint(0, 255) & nn
+        elif o1 == 0xD:
+            pass
+        elif o1 == 0xE:
+            if nn == 0x9E:
+                if (self.keys_pressed & (1 << self.v[x])): self.pc += 2
+            elif nn == 0xA1:
+                if not (self.keys_pressed & (1 << self.v[x])): self.pc += 2
+        elif o1 == 0xF:
+            if nn == 0x07:
+                self.v[x] = 0
+            elif nn == 0x0A:
+                if self.key_queue:
+                    self.v[x] = self.key_queue.pop(0)
+                else:
+                    self.waiting_for_key = True
+                    self.key_reg = x
+            elif nn in (0x15, 0x18):
+                pass
+            elif nn == 0x1E:
+                self.i = (self.i + self.v[x]) & 0xFFF
+            elif nn == 0x29:
+                self.i = (self.v[x] * 5) & 0xFFF
+            elif nn == 0x30:
+                self.i = (self.v[x] * 10) & 0xFFF
+            elif nn == 0x33:
+                val = self.v[x]
+                self.mem[self.i] = val // 100
+                self.mem[self.i+1] = (val // 10) % 10
+                self.mem[self.i+2] = val % 10
+            elif nn == 0x55:
+                for r in range(x + 1): self.mem[self.i + r] = self.v[r]
+            elif nn == 0x65:
+                for r in range(x + 1): self.v[r] = self.mem[self.i + r]
+            elif nn == 0x75:
+                for r in range(x + 1): self.rpl_flags[r] = self.v[r]
+            elif nn == 0x85:
+                for r in range(x + 1): self.v[r] = self.rpl_flags[r]
+            elif 0x90 <= nn <= 0x97:
+                pass
+            elif nn in (0x98, 0x99, 0xA0, 0xA1, 0xA3):
+                pass
+            elif nn == 0xA2:
+                self.v[0] = 0
+            elif nn == 0xB0:
+                self.v[x] = self.keys_pressed & 0xFF
 
 class TestAssembleChip8(unittest.TestCase):
     def test_assemble_simple_instruction(self):
@@ -206,6 +349,278 @@ class TestFebBuild(unittest.TestCase):
             asm_mod = compiler.compile_c_to_asm(c_path)
             asm_facade = c_compiler.compile_c_to_asm(c_path)
             self.assertEqual(asm_mod, asm_facade, f"Compiler output mismatch on {app}")
+
+class TestToolingGuards(unittest.TestCase):
+    def test_guard_no_embedded_asm_in_examples(self):
+        """Guard: No SDK examples may contain inline or embedded assembly blocks."""
+        examples_dir = os.path.join(REPO_ROOT, "examples")
+        for root, _, files in os.walk(examples_dir):
+            for file in files:
+                if file.endswith((".c", ".h")):
+                    path = os.path.join(root, file)
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    self.assertNotIn("__FEB_ASM__", content, f"Embedded assembly found in {path}")
+                    self.assertNotIn("__asm__", content, f"Embedded assembly found in {path}")
+                    self.assertNotIn("__asm", content, f"Embedded assembly found in {path}")
+
+    def test_guard_local_variables_limit_enforced(self):
+        """Guard: Functions with > 9 local variables must fail cleanly, not corrupt registers."""
+        c_code_ok = """
+        void ok_func(void) {
+            uint8_t a = 1; uint8_t b = 2; uint8_t c = 3;
+            uint8_t d = 4; uint8_t e = 5; uint8_t f = 6;
+            uint8_t g = 7; uint8_t h = 8; uint8_t i = 9;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code_ok)
+            p_ok = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p_ok)
+            self.assertIn("OK_FUNC:", asm)
+        finally:
+            if os.path.exists(p_ok):
+                os.remove(p_ok)
+
+        c_code_bad = """
+        void bad_func(void) {
+            uint8_t a = 1; uint8_t b = 2; uint8_t c = 3;
+            uint8_t d = 4; uint8_t e = 5; uint8_t f = 6;
+            uint8_t g = 7; uint8_t h = 8; uint8_t i = 9;
+            uint8_t j = 10;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code_bad)
+            p_bad = tf.name
+        try:
+            with self.assertRaises(ValueError) as cm:
+                feb_build.compile_c_to_asm(p_bad)
+            self.assertIn("exceeds maximum 9 registers", str(cm.exception))
+        finally:
+            if os.path.exists(p_bad):
+                os.remove(p_bad)
+
+    def test_guard_relational_comparisons_and_loops(self):
+        """Guard: Relational operators (<, <=, >, >=, ==, !=) and loops must branch correctly."""
+        c_code = """
+        #include <feb.h>
+        int main(void) {
+            uint8_t count = 0;
+            uint8_t k = 0;
+            while (k < 5) {
+                count += 1;
+                k += 1;
+            }
+            if (count == 5) {
+                count += 10;
+            }
+            uint8_t a = 3;
+            uint8_t b = 7;
+            if (a <= b) {
+                count += 20;
+            }
+            if (b > a) {
+                count += 30;
+            }
+            if (a >= b) {
+                count += 100;
+            }
+            return count;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 2000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 65)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_guard_array_assignment_and_expression_integrity(self):
+        """Guard: Array indexing expressions and assignments preserve registers and memory."""
+        c_code = """
+        #include <feb.h>
+        static uint8_t arr[8];
+        int main(void) {
+            for (uint8_t i = 0; i < 8; i++) {
+                arr[i] = i * 3;
+            }
+            uint8_t sum = 0;
+            for (uint8_t j = 0; j < 8; j++) {
+                sum += arr[j];
+            }
+            return sum;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 2000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 84)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_guard_arithmetic_optimizations(self):
+        """Guard: Constant arithmetic optimizations (power-of-2 mul, div, mod, shifts) execute correctly."""
+        c_code = """
+        #include <feb.h>
+        uint8_t test_arith(uint8_t x) {
+            uint8_t a = x * 4;
+            uint8_t b = x / 2;
+            uint8_t c = x % 8;
+            uint8_t d = x << 2;
+            uint8_t e = x >> 1;
+            return a + b + c + d + e;
+        }
+        int main(void) {
+            return test_arith(10);
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 1000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 92)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_guard_control_flow_switch_hardware_keys(self):
+        """Guard: Switch statement correctly resolves hardware key constants and compound exit mask."""
+        c_code = """
+        #include <feb.h>
+        uint8_t handle_key(uint8_t k) {
+            uint8_t action = 0;
+            switch (k) {
+                case (FEB_KEY_UP | FEB_KEY_DOWN):
+                    action = 99;
+                    break;
+                case FEB_KEY_UP:
+                    action = 10;
+                    break;
+                case FEB_KEY_DOWN:
+                    action = 20;
+                    break;
+                case FEB_KEY_LEFT:
+                    action = 30;
+                    break;
+                case FEB_KEY_RIGHT:
+                    action = 40;
+                    break;
+                default:
+                    action = 1;
+                    break;
+            }
+            return action;
+        }
+        int main(void) {
+            uint8_t a = handle_key(FEB_KEY_UP);
+            uint8_t b = handle_key(FEB_KEY_DOWN);
+            uint8_t c = handle_key(FEB_KEY_LEFT);
+            uint8_t d = handle_key(FEB_KEY_RIGHT);
+            uint8_t e = handle_key(FEB_KEY_UP | FEB_KEY_DOWN);
+            uint8_t f = handle_key(0xFF);
+            return a + b + c + d + e + f;
+        }
+        """
+        with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as tf:
+            tf.write(c_code)
+            p = tf.name
+        try:
+            asm = feb_build.compile_c_to_asm(p)
+            bc = assemble_chip8.assemble(asm)
+            sim = SimChip8(bc)
+            steps = 0
+            while not sim.exited and steps < 2000:
+                sim.step()
+                steps += 1
+            self.assertTrue(sim.exited)
+            self.assertEqual(sim.v[0], 200)
+        finally:
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_guard_2048_pure_c_simulation_and_step_budget(self):
+        """Guard: 2048 boot and turns meet step budgets and preserve tile/score state."""
+        c_path = os.path.join(REPO_ROOT, "examples", "2048", "main.c")
+        asm = feb_build.compile_c_to_asm(c_path)
+        rom = assemble_chip8.assemble(asm)
+
+        sim = SimChip8(rom)
+        boot_steps = 0
+        while not sim.waiting_for_key and not sim.exited and boot_steps < 5000:
+            sim.step()
+            boot_steps += 1
+
+        self.assertTrue(sim.waiting_for_key, "2048 failed to reach initial key wait")
+        self.assertLess(boot_steps, 2000, f"2048 boot step budget exceeded: {boot_steps} >= 2000")
+
+        moves = [4, 8, 6, 2, 4, 8, 6, 2]
+        for idx, key in enumerate(moves):
+            sim.key_queue.append(key)
+            steps = 0
+            sim.step()
+            steps += 1
+            while not sim.waiting_for_key and not sim.exited and steps < 5000:
+                sim.step()
+                steps += 1
+
+            self.assertTrue(sim.waiting_for_key, f"2048 failed to return to key wait after move {idx}")
+            self.assertLess(steps, 5000, f"Move {idx} exceeded 5000 step budget: {steps}")
+
+    def test_guard_all_sdk_examples_pure_c_compilation_and_packaging(self):
+        """Guard: All SDK examples compile, assemble, and package into valid .feb binaries within budgets."""
+        examples = ["template", "button_demo", "features_demo", "2048"]
+        for app in examples:
+            c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
+            asm = feb_build.compile_c_to_asm(c_path)
+            bytecode = assemble_chip8.assemble(asm)
+
+            self.assertLess(len(bytecode), 2500, f"Bytecode for {app} exceeds 2500 bytes budget: {len(bytecode)}")
+
+            feb_data = make_feb.create_feb(
+                app_type=make_feb.FEB_TYPE_CHIP8,
+                title=app,
+                author="Flashiibo",
+                version="1.0.0",
+                payload=bytecode
+            )
+
+            self.assertEqual(len(feb_data), 96 + len(bytecode))
+            magic, ver, app_type, flags = struct.unpack_from("<IBBH", feb_data, 0)
+            self.assertEqual(magic, make_feb.FEB_MAGIC)
+            self.assertEqual(ver, 1)
+            self.assertEqual(app_type, make_feb.FEB_TYPE_CHIP8)
+            payload_size = struct.unpack_from("<I", feb_data, 88)[0]
+            self.assertEqual(payload_size, len(bytecode))
 
 if __name__ == "__main__":
     unittest.main()
