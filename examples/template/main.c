@@ -11,7 +11,7 @@
  *   - BACK:    Move Left (FEB_KEY_LEFT = 0x4)
  *   - OK:      Move Right (FEB_KEY_RIGHT = 0x6)
  *
- * Pressing UP and DOWN simultaneously exits immediately back to the device menu.
+ * Pressing UP + DOWN + BACK simultaneously exits immediately back to the device menu.
  */
 
 #include "../../include/feb.h"

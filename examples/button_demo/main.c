@@ -8,7 +8,7 @@
  *   - Displays directional tap counts on screen edges (Top=UP, Bottom=DOWN, Left=BACK, Right=OK)
  *
  * Each physical button press increments the count and updates the center callout.
- * Pressing UP + DOWN simultaneously exits back to the FEB Runner menu.
+ * Pressing UP + DOWN + BACK simultaneously exits back to the FEB Runner menu.
  */
 
 #include "../../include/feb.h"

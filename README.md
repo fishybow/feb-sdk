@@ -56,7 +56,7 @@ Flashiibo Gen3 features four physical buttons:
 | **OK** | `FEB_KEY_RIGHT` / `FEB_KEY_OK` | `0x6` | Directional RIGHT / Select |
 
 > [!IMPORTANT]
-> **Emergency Exit Chord:** Pressing **UP** and **DOWN** simultaneously guarantees immediate return to the Flashiibo device menu. Long-press on BACK is NOT used as an exit trigger, making BACK completely safe for gameplay movement.
+> **Emergency Exit Chord:** Pressing **UP**, **DOWN**, and **BACK** simultaneously guarantees immediate return to the Flashiibo device menu. Long-press on BACK is NOT used as an exit trigger, making BACK completely safe for gameplay movement.
 
 ---
 
@@ -170,6 +170,11 @@ Include the C SDK header in your application:
 - `void feb_set_delay_timer(uint8_t val);`: Sets the 60 Hz delay timer countdown.
 - `uint8_t feb_get_delay_timer(void);`: Reads the current 60 Hz delay timer value.
 - `void feb_delay_frames(uint8_t frames);`: Delays execution for N frames (~16.6 ms per frame).
+
+### Lifecycle & Persistence
+- `void feb_exit(void);`: Immediately terminates the program and returns to the FEB Runner menu (alias: `feb_quit()`).
+- `void feb_save_flags(const uint8_t *data, uint8_t len);`: Persists up to 16 bytes to `/feb/saves/<app_name>.sav`.
+- `void feb_load_flags(uint8_t *data, uint8_t len);`: Loads persistent state from companion `.sav`.
 
 ---
 

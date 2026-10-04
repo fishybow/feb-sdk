@@ -60,10 +60,10 @@ Flashiibo devices feature four physical buttons on the device body. In FEB Runne
 | **BACK** | `FEB_KEY_LEFT` / `FEB_KEY_BACK` | `0x4` | Move cursor left / Navigate back |
 | **OK** | `FEB_KEY_RIGHT` / `FEB_KEY_OK` | `0x6` | Move cursor right / Select / Action |
 
-### 2.2 System Exit Contract (UP + DOWN Chord)
+### 2.2 System Exit Contract (UP + DOWN + BACK Chord)
 
 > [!IMPORTANT]
-> **Pressing UP and DOWN simultaneously** is intercepted at both the OS and virtual machine engine level to guarantee an immediate, safe exit back to the "FEB Runner" main menu.
+> **Pressing UP, DOWN, and BACK simultaneously** is intercepted at both the OS and virtual machine engine level to guarantee an immediate, safe exit back to the "FEB Runner" main menu.
 >
 > Long press on BACK is deliberately **not** an exit trigger, ensuring that BACK (Key 0x4 / Left) is completely safe to hold down for continuous gameplay movement or action charging without accidental termination.
 
@@ -176,6 +176,14 @@ Saves up to 16 bytes of persistent application state (mapped to Super-CHIP RPL u
 
 #### `void feb_load_flags(uint8_t *data, uint8_t len);`
 Loads up to 16 bytes of persistent application state previously saved by `feb_save_flags`.
+
+### 3.8 Lifecycle & Programmatic Exit
+
+#### `void feb_exit(void);`
+Immediately halts execution of the FEB application, flushes any dirty RPL persistent flags, and returns cleanly to the device's "FEB Runner" menu.
+
+- **Alias:** `feb_quit()`
+- **Bytecode:** Emits standard Super-CHIP `00FD` opcode.
 
 ---
 

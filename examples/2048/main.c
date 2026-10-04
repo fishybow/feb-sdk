@@ -8,7 +8,7 @@
  *   - DOWN:    Slide Down (Key 0x8)
  *   - BACK:    Slide Left (Key 0x4)
  *   - OK:      Slide Right (Key 0x6)
- * Pressing UP and DOWN together guarantees immediate game exit back to the FEB Runner menu.
+ * Pressing UP + DOWN + BACK together guarantees immediate game exit back to the FEB Runner menu.
  */
 
 #include "../../include/feb.h"
@@ -51,6 +51,11 @@ static const uint8_t SPRITE_GRID_RIGHT_16[32] = {
     0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00
 };
 
+/* 8x5 "HI" banner sprite for high score label */
+static const uint8_t SPRITE_HI[5] = {
+    0xAE, 0xA4, 0xE4, 0xA4, 0xAE
+};
+
 /* Board state: 16 tiles (4x4)
  *   0: Empty cell
  *   1: Tile "2"    (displays hex digit '0')
@@ -62,6 +67,9 @@ static const uint8_t SPRITE_GRID_RIGHT_16[32] = {
  */
 static uint8_t board[BOARD_SIZE];
 static uint8_t new_board[BOARD_SIZE];
+
+/* Persistent high score: highest tile level achieved (1..11) saved in /feb/saves/2048.sav */
+static uint8_t best_tile = 0;
 
 /* -------------------------------------------------------------------------
  * Board Rendering
@@ -108,6 +116,13 @@ static void draw_board(void) {
             x = GRID_ORIGIN_X + TILE_OFFSET_X;
             y += CELL_SIZE;
         }
+    }
+}
+
+static void draw_best(void) {
+    feb_draw_sprite(12, 20, 5, SPRITE_HI);
+    if (best_tile > 0) {
+        feb_draw_digit(13, 28, best_tile - 1);
     }
 }
 
@@ -168,9 +183,20 @@ static bool slide_left(void) {
 
             if (val == last_val) {
                 /* Merge with previous tile in new row */
-                new_board[write_idx - 1] = val + 1;
+                uint8_t merged_val = val + 1;
+                new_board[write_idx - 1] = merged_val;
                 last_val = 0;
                 moved = true;
+
+                if (merged_val > best_tile) {
+                    if (best_tile > 0) {
+                        /* XOR erase previous high score digit */
+                        feb_draw_digit(13, 28, best_tile - 1);
+                    }
+                    best_tile = merged_val;
+                    feb_draw_digit(13, 28, best_tile - 1);
+                    feb_save_flags(&best_tile, 1);
+                }
             } else {
                 last_val = val;
                 new_board[write_idx] = val;
@@ -258,8 +284,16 @@ static void new_game(void) {
 int main(void) {
     feb_set_high_res(true);
     feb_clear_screen();
+
+    /* Load persistent high score from companion /feb/saves/2048.sav */
+    feb_load_flags(&best_tile, 1);
+    if (best_tile > 15) {
+        best_tile = 0;
+    }
+
     new_game();
     draw_grid();
+    draw_best();
     place_random_tile();
     place_random_tile();
 

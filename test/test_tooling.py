@@ -46,6 +46,15 @@ class TestAssembleChip8(unittest.TestCase):
         code = assemble_chip8.assemble(asm)
         self.assertEqual(code, bytes([0x00, 0xFF, 0x00, 0xFE, 0xF5, 0x30, 0xF3, 0x75, 0xF7, 0x85]))
 
+    def test_assemble_exit_quit_instructions(self):
+        asm = """
+        START:
+            exit
+            quit
+        """
+        code = assemble_chip8.assemble(asm)
+        self.assertEqual(code, bytes([0x00, 0xFD, 0x00, 0xFD]))
+
     def test_assemble_custom_geometry_instructions(self):
         asm = """
         START:
@@ -169,7 +178,7 @@ class TestFebBuild(unittest.TestCase):
                 version="1.0.0",
                 payload=bytecode
             )
-            self.assertEqual(len(feb_data), 96 + 540)
+            self.assertEqual(len(feb_data), 96 + 623)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)

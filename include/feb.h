@@ -30,7 +30,7 @@ extern "C" {
  *   - DOWN:    Key 0x8
  *   - BACK:    Key 0x4  (Acts as Left in games/apps)
  *   - OK:      Key 0x6  (Acts as Right in games/apps)
- * NOTE: Pressing UP and DOWN together guarantees immediate game exit back to
+ * NOTE: Pressing UP, DOWN, and BACK together guarantees immediate game exit back to
  * the "FEB Runner" menu. Long press on BACK is not an exit key and is fully
  * available for normal gameplay controls.
  */
@@ -98,6 +98,15 @@ extern "C" {
  * @param enable true for 128x64 mode (opcode 0x00FF), false for 64x32 mode (opcode 0x00FE).
  */
 void feb_set_high_res(bool enable);
+
+/**
+ * @brief Immediately terminates the FEB application and returns to the FEB Runner menu.
+ *
+ * Emits Super-CHIP exit opcode 0x00FD.
+ */
+void feb_exit(void);
+
+#define feb_quit() feb_exit()
 
 /**
  * @brief Clears the entire display screen buffer (sets all pixels to 0).

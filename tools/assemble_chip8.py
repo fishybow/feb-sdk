@@ -130,6 +130,9 @@ def assemble(asm_text):
             elif mnem == "low":
                 binary.extend((0x00, 0xFE))
                 pc += 2
+            elif mnem in ("exit", "quit"):
+                binary.extend((0x00, 0xFD))
+                pc += 2
             elif mnem == "ret":
                 binary.extend((0x00, 0xEE))
                 pc += 2

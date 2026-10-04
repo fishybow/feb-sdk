@@ -458,8 +458,11 @@ def generate_2048_asm():
 START:
         high                    ; Enable 128x64 high-resolution mode (Super-CHIP)
         cls                     ; Clear screen buffer
+        loadflags v0            ; Load persistent high score from RPL flag 0
+        load ve, v0             ; ve := BEST_TILE
         call NEWGAME
         call DRAW_GRID
+        call DRAW_HI
         call PLACE_RANDOM_TILE
         call PLACE_RANDOM_TILE
 
@@ -507,6 +510,21 @@ DRAW_GRID_LOOP:
         skip.ne v3, 48          ; for bottommost row (Y=48), use special bottom sprite
         load i, GRID_BOTTOM_16
         jump DRAW_GRID_LOOP
+
+DRAW_HI:
+        load i, SPRITE_HI
+        load v8, 12
+        load v9, 20
+        draw v8, v9, 5          ; Draw 8x5 "HI" banner at (12, 20)
+        skip.ne ve, 0           ; If ve == 0, no digit yet
+        ret
+        load v7, ve
+        sub v7, 1               ; digit := ve - 1
+        hex v7
+        load v8, 13
+        load v9, 28
+        draw v8, v9, 5          ; Draw hex digit at (13, 28)
+        ret
 
 BLIT:
         load v1, 0
@@ -650,6 +668,34 @@ MERGE_LEFT:
         add v0, 1
         load v3, 0
         sub v2, 1
+        call CHECK_BEST
+        ret
+
+CHECK_BEST:
+        load v7, ve
+        sub v7, v0              ; v7 := ve - v0. If ve >= v0: VF=1. If ve < v0: VF=0.
+        skip.eq vf, 0           ; If new best (VF==0), skip ret
+        ret
+
+        ;; New best tile!
+        skip.ne ve, 0           ; If ve != 0, skip jump DRAW_NEW_BEST
+        jump DRAW_NEW_BEST
+        load v7, ve
+        sub v7, 1
+        hex v7
+        load v8, 13
+        load v9, 28
+        draw v8, v9, 5          ; XOR erase old digit
+DRAW_NEW_BEST:
+        load ve, v0             ; ve := new best
+        load v7, v0
+        saveflags v0            ; Store v0 into rpl_flags[0] (persisted to .sav)
+        load v0, v7             ; restore v0
+        sub v7, 1               ; digit := new_best - 1
+        hex v7
+        load v8, 13
+        load v9, 28
+        draw v8, v9, 5          ; Draw new digit
         ret
 
 ;;; DRAW_TILE
@@ -801,6 +847,13 @@ GRID_RIGHT_16:
         .byte $10000000, $00000000
         .byte $10000000, $00000000
         .byte $10000000, $00000000
+
+SPRITE_HI:
+        .byte $10101110
+        .byte $10100100
+        .byte $11100100
+        .byte $10100100
+        .byte $10101110
 """
 
 def main():

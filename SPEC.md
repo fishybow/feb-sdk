@@ -125,7 +125,9 @@ Flashiibo Gen3 features four physical buttons:
                   └──────────────┘
 ```
 
-> **Mandatory Exit Chord:** Pressing **UP** and **DOWN** simultaneously guarantees immediate, uninterceptable return to the device menu.
+> **Mandatory Exit Chord:** Pressing **UP**, **DOWN**, and **BACK** simultaneously guarantees immediate, uninterceptable return to the device menu.
+>
+> **Programmatic Exit:** Programs can immediately exit back to the FEB Runner menu at any time by executing opcode `00FD` (`EXIT` / `QUIT` / `feb_exit()`).
 
 ---
 
