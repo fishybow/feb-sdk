@@ -20,7 +20,6 @@ FEB_VERSION = 1
 FEB_TYPE_CHIP8 = 0
 
 FEB_FLAG_NONE = 0x0000
-FEB_FLAG_IS_MINI_APP = 0x0001
 
 # Sidecar Save Specification (.sav)
 FEB_SAVE_MAGIC = 0x56415346 # 'FSAV' (little-endian ASCII)
@@ -56,19 +55,9 @@ ICON_CHIP8_16x16 = bytes([
     0xbd, 0xbd, 0x81, 0x81, 0x7e, 0x7e, 0x00, 0x00
 ])
 
-# Default 16x16 icon for Mini App (App grid / Tools)
-ICON_APP_16x16 = bytes([
-    0x00, 0x00, 0x3c, 0x3c, 0x24, 0x24, 0x3c, 0x3c,
-    0x00, 0x00, 0x3c, 0x3c, 0x24, 0x24, 0x3c, 0x3c,
-    0x00, 0x00, 0x3c, 0x3c, 0x24, 0x24, 0x3c, 0x3c,
-    0x00, 0x00, 0x3c, 0x3c, 0x24, 0x24, 0x3c, 0x3c
-])
-
-def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b"", icon=None, is_mini_app=False):
+def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b"", icon=None):
     if icon is None or len(icon) != 32:
-        if is_mini_app:
-            icon = ICON_APP_16x16
-        elif "2048" in title:
+        if "2048" in title:
             icon = ICON_2048_16x16
         else:
             icon = ICON_CHIP8_16x16
@@ -76,8 +65,6 @@ def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b""
     magic = FEB_MAGIC
     format_version = FEB_VERSION
     flags = FEB_FLAG_NONE
-    if is_mini_app:
-        flags |= FEB_FLAG_IS_MINI_APP
 
     title_bytes = title.encode('utf-8')[:23].ljust(24, b'\x00')
     author_bytes = author.encode('utf-8')[:15].ljust(16, b'\x00')
@@ -150,7 +137,6 @@ def main():
     parser.add_argument("--author", default="Flashiibo", help="Author string")
     parser.add_argument("--ver", default="1.0.0", help="Version string")
     parser.add_argument("--payload", default=None, help="Path to binary payload (e.g. .ch8 bytecode)")
-    parser.add_argument("--app", action="store_true", help="Mark executable as a mini-app (instead of game)")
 
     args = parser.parse_args()
 
@@ -166,8 +152,7 @@ def main():
         title=args.title,
         author=args.author,
         version=args.ver,
-        payload=payload_bytes,
-        is_mini_app=args.app
+        payload=payload_bytes
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)

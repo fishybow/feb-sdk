@@ -596,7 +596,6 @@ def main():
     parser.add_argument("--title", required=True, help="Display title (max 23 chars)")
     parser.add_argument("--author", default="Flashiibo", help="Author string")
     parser.add_argument("--ver", default="1.0.0", help="Version string")
-    parser.add_argument("--app", action="store_true", help="Mark as mini app")
     args = parser.parse_args()
 
     input_path = args.input
@@ -628,8 +627,7 @@ def main():
         title=args.title,
         author=args.author,
         version=args.ver,
-        payload=bytecode,
-        is_mini_app=args.app
+        payload=bytecode
     )
 
     with open(output_path, "wb") as f:

@@ -54,8 +54,7 @@ class TestMakeFeb(unittest.TestCase):
             title="Test App",
             author="Dev",
             version="1.0.0",
-            payload=payload,
-            is_mini_app=False
+            payload=payload
         )
         self.assertEqual(len(feb_data), 96 + len(payload))
 

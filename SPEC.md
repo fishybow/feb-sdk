@@ -56,7 +56,7 @@ The `.feb` (Flashiibo Executable Binary) format is a lightweight, sandboxed exec
 | `0..3` | `magic` | `uint32_t` | Fixed magic `0x4245462E` (`.FEB` in little-endian ASCII) |
 | `4` | `format_version` | `uint8_t` | Format version (currently `1`) |
 | `5` | `app_type` | `uint8_t` | Virtual machine bytecode type (`0` = CHIP-8) |
-| `6..7` | `flags` | `uint16_t` | Bitmask flags: Bit 0 (`0x0001`) = `FEB_FLAG_IS_MINI_APP` |
+| `6..7` | `flags` | `uint16_t` | Reserved for future runtime flags (default `0x0000`) |
 | `8..31` | `title` | `char[24]` | UTF-8 null-terminated application display title |
 | `32..47`| `author` | `char[16]` | UTF-8 null-terminated author string |
 | `48..55`| `version` | `char[8]` | Semantic version string (e.g. `"1.0.0"`) |
