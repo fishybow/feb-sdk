@@ -104,7 +104,7 @@ class TestFebBuild(unittest.TestCase):
                 version="1.0.0",
                 payload=bytecode
             )
-            self.assertEqual(len(feb_data), 96 + 536)
+            self.assertEqual(len(feb_data), 96 + 540)
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)

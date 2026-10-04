@@ -510,6 +510,8 @@ PLACE_TILE_SCAN:
         jump PLACE_TILE_SCAN
 
 PLACE_TILE_SET:
+        load i, BOARD
+        add i, v1
         load v0, vb             ; BOARD[K] := TILE
         save v0
         ret
