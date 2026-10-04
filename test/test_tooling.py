@@ -201,5 +201,11 @@ class TestFebBuild(unittest.TestCase):
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 207)
 
+    def test_build_quest_c(self):
+        c_path = os.path.join(REPO_ROOT, "examples", "quest", "main.c")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 2102)
+
 if __name__ == "__main__":
     unittest.main()

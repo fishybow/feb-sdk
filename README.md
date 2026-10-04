@@ -113,6 +113,9 @@ feb-sdk/
 │   │   ├── main.c
 │   │   ├── main.asm
 │   │   └── Makefile
+│   ├── quest/             <-- Tiny Quest: retro top-down action RPG with bump combat (128x64)
+│   │   ├── main.c
+│   │   └── Makefile
 │   └── template/          <-- Starter template with 4-way movement (128x64)
 │       ├── main.c
 │       ├── main.asm
