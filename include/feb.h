@@ -289,11 +289,6 @@ uint8_t feb_draw_number(uint8_t x, uint8_t y, uint16_t num, uint8_t font_id);
  * Hardware Synchronization & Input Polling
  * ------------------------------------------------------------------------- */
 
-/**
- * @brief Deterministically yields VM execution until the next 60 Hz hardware frame tick.
- * Eliminates screen tearing and provides rock-solid framerate pacing.
- */
-void feb_wait_vsync(void);
 
 /**
  * @brief Reads the instantaneous 4-button hardware bitmask into an 8-bit integer.

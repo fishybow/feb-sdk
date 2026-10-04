@@ -98,7 +98,6 @@ int main(void) {
     init_game();
 
     while (1) {
-        feb_wait_vsync();
         feb_clear_screen();
 
         // 1. Draw HUD
@@ -156,7 +155,6 @@ START:
         call INIT_GAME_STATE
 
 MAIN_LOOP:
-        vsync                   ; 60 Hz frame synchronization (FX9A)
         cls                     ; Clear display buffer
 
         call DRAW_HUD

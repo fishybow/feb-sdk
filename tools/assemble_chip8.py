@@ -299,10 +299,6 @@ def assemble(asm_text):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0x99))
                 pc += 2
-            elif mnem == "vsync":
-                x = parse_reg(args[0]) if args else 0
-                binary.extend(((0xF0 | x), 0x9A))
-                pc += 2
             elif mnem in ("text", "drawstr"):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0xA0))

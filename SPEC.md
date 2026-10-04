@@ -150,11 +150,10 @@ Flashiibo Pro Gen3 extends the CHIP-8 / Super-CHIP instruction set with hardware
 | `FX98` | `DRAWMODE Vx` | `Vx`=Mode (0..4) | Sets active drawing mode: `0`=XOR, `1`=SET, `2`=CLEAR, `3`=OPAQUE, `4`=INVERTED_OPAQUE. |
 | `FX99` | `TESTPIXEL Vx` | `Vx`=X, `Vx+1`=Y | Zero-RAM collision detection: reads pixel at `(Vx, Vx+1)` into register `VF` (`1` if lit, `0` if off). Framebuffer is unmodified. |
 
-### 5.2 Deterministic Timing & Input
+### 5.2 Deterministic Input Polling
 
 | Opcode | Mnemonic | Parameters | Description |
 |---|---|---|---|
-| `FX9A` | `VSYNC` | Optional `Vx` | Halts VM execution until the next 60 Hz hardware timer tick. Guarantees tear-free 60 FPS pacing. |
 | `FXB0` | `GETKEYS Vx` | `Vx`=Destination | Reads instantaneous 4-button hardware bitmask into `Vx`: Bit 0=`UP` (`0x01`), Bit 1=`DOWN` (`0x02`), Bit 2=`LEFT` (`0x04`), Bit 3=`RIGHT` (`0x08`). Non-blocking. |
 
 ### 5.3 Typography & Number Formatting

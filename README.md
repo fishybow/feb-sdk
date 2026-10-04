@@ -109,16 +109,14 @@ feb-sdk/
 │   ├── button_demo/       <-- Hardware 4-button input demo & press counter (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
-│   ├── features_demo/     <-- Custom VM extensions showcase: geometry, text, vsync, getkeys (128x64)
+│   ├── features_demo/     <-- Custom VM extensions showcase: geometry, text, getkeys (128x64)
 │   │   ├── main.c
-│   │   ├── main.asm
 │   │   └── Makefile
 │   ├── quest/             <-- Tiny Quest: retro top-down action RPG with bump combat (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
 │   └── template/          <-- Starter template with 4-way movement (128x64)
 │       ├── main.c
-│       ├── main.asm
 │       └── Makefile
 ├── test/                  <-- Automated test suite
 │   └── test_tooling.py
@@ -162,8 +160,7 @@ Include the C SDK header in your application:
 - `uint8_t feb_draw_number(uint8_t x, uint8_t y, uint16_t num, uint8_t font_id);`: Formats 16-bit integer (0..65535); advances X.
 - *Fonts:* `FEB_FONT_4X6` (0), `FEB_FONT_6X10` (1, default UI), `FEB_FONT_RETRO_8X8` (2).
 
-### Input & Frame Synchronization
-- `void feb_wait_vsync(void);`: Yields execution until next 60 Hz hardware tick for tear-free 60 FPS animation.
+### Input & Button Polling
 - `uint8_t feb_get_keys(void);`: Non-blocking instantaneous bitmask of 4 physical buttons (`FEB_BTN_UP`, `FEB_BTN_DOWN`, `FEB_BTN_LEFT`, `FEB_BTN_RIGHT`).
 - `uint8_t feb_wait_key(void);`: Blocks until a button is pressed; returns key code (`0x2`, `0x8`, `0x4`, `0x6`).
 - `bool feb_is_key_down(uint8_t key);`: Checks if a specific key is held.

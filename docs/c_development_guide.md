@@ -133,10 +133,7 @@ Functions:
 - `uint8_t feb_string_width(const char *str, uint8_t font_id);`: Calculates pixel width of string without drawing.
 - `uint8_t feb_draw_number(uint8_t x, uint8_t y, uint16_t num, uint8_t font_id);`: Formats and renders 16-bit unsigned integer (0..65535) directly from register `I`; returns advanced X coordinate.
 
-### 3.5 Input & Hardware Synchronization
-
-#### `void feb_wait_vsync(void);`
-Deterministically halts VM stepping until the next 60 Hz hardware timer tick. This guarantees buttery smooth 60 FPS animation, rock-solid frame pacing, and eliminates screen tearing.
+### 3.5 Input Polling
 
 #### `uint8_t feb_get_keys(void);`
 Non-blocking poll of the instantaneous 4-button hardware bitmask:
@@ -189,9 +186,9 @@ Immediately halts execution of the FEB application, flushes any dirty RPL persis
 
 ## 4. Examples & Architectural Patterns
 
-### 4.1 Real-Time 60 FPS Game Loop Pattern (`examples/features_demo`)
+### 4.1 Real-Time Action Pattern (`examples/features_demo`)
 
-For smooth, dynamic games, combine `feb_wait_vsync()` with non-blocking `feb_get_keys()`:
+For smooth, flicker-free movement in single-buffered CHIP-8, use non-blocking `feb_get_keys()` and XOR in-place erasing rather than clearing the whole screen every frame:
 
 ```c
 #include "feb.h"
@@ -199,21 +196,23 @@ For smooth, dynamic games, combine `feb_wait_vsync()` with non-blocking `feb_get
 int main(void) {
     uint8_t x = 60, y = 30;
     feb_set_high_res(true);
+    feb_clear_screen();
+
+    /* Render static background once */
+    feb_draw_string(4, 2, "ACTION DEMO", FEB_FONT_6X10);
+    feb_draw_rect(x, y, 6, 6);
 
     while (1) {
-        feb_wait_vsync();      /* Lock to hardware 60 Hz tick */
-        feb_clear_screen();
-
-        /* Render scene */
-        feb_draw_string(4, 2, "60 FPS GAME", FEB_FONT_6X10);
-        feb_draw_rect(x, y, 6, 6);
-
         /* Poll instantaneous input */
         uint8_t keys = feb_get_keys();
-        if (keys & FEB_BTN_UP)    y--;
-        if (keys & FEB_BTN_DOWN)  y++;
-        if (keys & FEB_BTN_LEFT)  x--;
-        if (keys & FEB_BTN_RIGHT) x++;
+        if (keys != 0) {
+            feb_draw_rect(x, y, 6, 6); /* XOR erase old position */
+            if (keys & FEB_BTN_UP)    y--;
+            if (keys & FEB_BTN_DOWN)  y++;
+            if (keys & FEB_BTN_LEFT)  x--;
+            if (keys & FEB_BTN_RIGHT) x++;
+            feb_draw_rect(x, y, 6, 6); /* XOR draw new position */
+        }
     }
     return 0;
 }

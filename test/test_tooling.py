@@ -85,8 +85,6 @@ class TestAssembleChip8(unittest.TestCase):
         START:
             drawmode v1
             testpixel v2
-            vsync
-            vsync v3
             num v4
             getkeys v5
         """
@@ -94,8 +92,6 @@ class TestAssembleChip8(unittest.TestCase):
         expected = bytes([
             0xF1, 0x98,  # drawmode v1
             0xF2, 0x99,  # testpixel v2
-            0xF0, 0x9A,  # vsync (default v0)
-            0xF3, 0x9A,  # vsync v3
             0xF4, 0xA3,  # num v4
             0xF5, 0xB0,  # getkeys v5
         ])
@@ -199,13 +195,13 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "features_demo", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 207)
+        self.assertEqual(len(bytecode), 289)
 
     def test_build_quest_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "quest", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 2102)
+        self.assertEqual(len(bytecode), 2100)
 
 if __name__ == "__main__":
     unittest.main()

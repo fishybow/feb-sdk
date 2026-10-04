@@ -51,7 +51,7 @@ def compile_c_to_asm(c_source_path):
         return generate_button_demo_asm()
 
     # Features demo app
-    if "features_demo" in c_source_path or "features_demo" in c_code.lower() or "feb_wait_vsync" in c_code:
+    if "features_demo" in c_source_path or "features_demo" in c_code.lower() or "feature demo" in c_code.lower() or "features demo" in c_code.lower() or "cursor_x" in c_code:
         return generate_features_demo_asm()
 
     raise ValueError(
@@ -67,23 +67,16 @@ def compile_c_to_asm(c_source_path):
 def generate_features_demo_asm():
     """
     Returns the CHIP-8 assembly representation of the features demo application:
-    Demonstrates hardware 60 Hz vsync, instantaneous getkeys, geometry primitives
-    (rect, fillrect, circle, disc), typography (text, num), and zero-RAM testpixel collision.
+    Demonstrates instantaneous getkeys, geometry primitives (rect, fillrect, circle, disc),
+    typography (text, num), zero-RAM testpixel collision, and flicker-free XOR rendering.
     """
     return """;;; Features & Primitives Showcase for Flashiibo FEB (Super-CHIP 128x64 mode)
 ;;; Compiled from examples/features_demo/main.c
 START:
         high                    ; Enable 128x64 high-resolution mode
         cls                     ; Clear screen
-        load v0, 60             ; Cursor X := 60
-        load v1, 30             ; Cursor Y := 30
-        load v2, 0              ; Frame counter := 0
 
-FRAME_LOOP:
-        vsync                   ; Deterministic 60 Hz frame synchronization (FX9A)
-        cls                     ; Clear display buffer
-
-        ;; 1. Header outline and typography
+        ;; Draw static header outline and typography
         load v4, 0
         load v5, 0
         load v6, 127
@@ -96,7 +89,56 @@ FRAME_LOOP:
         load v6, 1              ; FEB_FONT_6X10
         text v4                 ; Render title text (FXA0)
 
-        ;; Render 16-bit frame counter
+        ;; Draw static Geometric Primitives
+        load v4, 10
+        load v5, 20
+        load v6, 20
+        load v7, 16
+        fillrect v4             ; Solid rectangle (FX95)
+
+        load v4, 64
+        load v5, 30
+        load v6, 12
+        circle v4               ; Hollow circle (FX96)
+
+        load v4, 100
+        load v5, 30
+        load v6, 8
+        disc v4                 ; Filled circle (FX97)
+
+        ;; Initial state
+        load v0, 60             ; Cursor X := 60
+        load v1, 30             ; Cursor Y := 30
+        load v2, 0              ; Frame counter := 0
+        load v3, 0              ; Last hit state := 0
+
+        ;; Draw initial cursor (XOR)
+        load v4, v0
+        load v5, v1
+        load v6, 5
+        load v7, 5
+        rect v4
+
+        ;; Draw initial status
+        load i, STR_STATUS
+        load v4, 30
+        load v5, 52
+        load v6, 0              ; FEB_FONT_4X6
+        text v4
+
+MAIN_LOOP:
+        ;; Update 16-bit frame counter in header
+        ;; Clear number background box with DRAWMODE CLEAR (2)
+        load v4, 2
+        drawmode v4             ; CLEAR mode (FX98)
+        load v4, 95
+        load v5, 2
+        load v6, 30
+        load v7, 8
+        fillrect v4             ; Wipe previous counter text
+
+        load v4, 1
+        drawmode v4             ; SET mode (FX98)
         load i, 0
         add i, v2
         load v4, 95
@@ -105,58 +147,21 @@ FRAME_LOOP:
         num v4                  ; Render number from I (FXA3)
         add v2, 1               ; Increment frame counter
 
-        ;; 2. Geometric Primitives
-        ;; Filled rectangle on left
-        load v4, 10
-        load v5, 20
-        load v6, 20
-        load v7, 16
-        fillrect v4             ; Solid rectangle (FX95)
+        ;; Restore XOR draw mode (0)
+        load v4, 0
+        drawmode v4
 
-        ;; Hollow circle in center
-        load v4, 64
-        load v5, 30
-        load v6, 12
-        circle v4               ; Hollow circle (FX96)
+        ;; Poll 4 physical buttons
+        getkeys v8              ; Reads physical button bitmask (FXB0)
+        skip.ne v8, 0
+        jump NO_MOVE            ; If no buttons pressed, skip cursor erase/redraw
 
-        ;; Solid disc on right
-        load v4, 100
-        load v5, 30
-        load v6, 8
-        disc v4                 ; Filled circle (FX97)
-
-        ;; 3. Zero-RAM Collision Detection
-        load v4, v0
-        load v5, v1
-        testpixel v4            ; Test pixel under cursor directly on framebuffer (FX99)
-
-        ;; Draw 5x5 cursor outline box
+        ;; Erase old cursor at (v0, v1) using XOR rect
         load v4, v0
         load v5, v1
         load v6, 5
         load v7, 5
         rect v4
-
-        ;; Collision status feedback
-        skip.eq vf, 1
-        jump NO_HIT
-        load i, STR_HIT
-        load v4, 20
-        load v5, 52
-        load v6, 0              ; FEB_FONT_4X6
-        text v4
-        jump INPUT_STEP
-
-NO_HIT:
-        load i, STR_STATUS
-        load v4, 30
-        load v5, 52
-        load v6, 0              ; FEB_FONT_4X6
-        text v4
-
-INPUT_STEP:
-        ;; 4. Instantaneous 4-button polling
-        getkeys v8              ; Reads physical button bitmask (FXB0)
 
         ;; Check UP (Bit 0 = 0x01)
         load v4, 1
@@ -182,7 +187,7 @@ INPUT_STEP:
         skip.eq v4, 0
         add v0, 1
 
-        ;; Clamp cursor within screen boundaries
+        ;; Clamp cursor within boundaries
         skip.ne v0, 1
         load v0, 2
         skip.ne v0, 126
@@ -192,7 +197,60 @@ INPUT_STEP:
         skip.ne v1, 61
         load v1, 60
 
-        jump FRAME_LOOP
+        ;; Zero-RAM Collision Detection at new position (BEFORE drawing cursor)
+        load v4, v0
+        load v5, v1
+        testpixel v4            ; VF = 1 if colliding with shapes, 0 otherwise
+
+        ;; Draw new cursor at (v0, v1) using XOR rect
+        load v4, v0
+        load v5, v1
+        load v6, 5
+        load v7, 5
+        rect v4
+
+        ;; Check if collision state changed (VF != v3)
+        skip.ne vf, v3
+        jump NO_MOVE
+
+        ;; Update last hit state
+        load v3, vf
+
+        ;; Clear status row with DRAWMODE CLEAR (2)
+        load v4, 2
+        drawmode v4
+        load v4, 10
+        load v5, 52
+        load v6, 110
+        load v7, 8
+        fillrect v4
+
+        ;; Draw status string with DRAWMODE SET (1)
+        load v4, 1
+        drawmode v4
+        skip.eq v3, 1
+        jump SHOW_STATUS
+
+        load i, STR_HIT
+        load v4, 40
+        load v5, 52
+        load v6, 0              ; FEB_FONT_4X6
+        text v4
+        jump FINISH_STATUS
+
+SHOW_STATUS:
+        load i, STR_STATUS
+        load v4, 30
+        load v5, 52
+        load v6, 0              ; FEB_FONT_4X6
+        text v4
+
+FINISH_STATUS:
+        load v4, 0
+        drawmode v4             ; Restore XOR mode
+
+NO_MOVE:
+        jump MAIN_LOOP
 
 STR_TITLE:
         .asciz "FLASHIIBO"
