@@ -4,23 +4,12 @@ on:
   push:
     branches:
       - main
-      - develop
-    tags:
-      - 'v*'
-  pull_request:
-    branches:
-      - main
-      - develop
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name for release (leave blank for "latest" or specify e.g. v1.0.0)'
+        description: 'Tag name for release (default: "latest")'
         required: false
-        default: ''
-      release_title:
-        description: 'Release title override (leave blank for automatic title)'
-        required: false
-        default: ''
+        default: 'latest'
       draft:
         description: 'Publish as draft release'
         required: false
@@ -31,11 +20,6 @@ on:
         required: false
         type: boolean
         default: false
-      publish_release:
-        description: 'Publish GitHub release (uncheck to only run tests & build artifacts)'
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -93,14 +77,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
-    if: |
-      always() &&
-      needs.build.result == 'success' &&
-      (
-        startsWith(github.ref, 'refs/tags/v') ||
-        github.ref == 'refs/heads/main' ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release != 'false')
-      )
+    if: needs.build.result == 'success'
 
     steps:
       - name: Checkout repository
@@ -117,55 +94,29 @@ jobs:
       - name: Determine Release Metadata
         id: meta
         run: |
+          TAG_NAME="latest"
+          RELEASE_NAME="FEB Games (Latest)"
+          DRAFT="false"
+          PRERELEASE="false"
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            INPUT_TAG="${{ inputs.tag_name }}"
-            if [ -n "$INPUT_TAG" ]; then
-              TAG_NAME="$INPUT_TAG"
-              RELEASE_NAME="${{ inputs.release_title }}"
-              if [ -z "$RELEASE_NAME" ]; then
+            if [ -n "${{ inputs.tag_name }}" ]; then
+              TAG_NAME="${{ inputs.tag_name }}"
+              if [ "$TAG_NAME" != "latest" ]; then
                 RELEASE_NAME="Release ${TAG_NAME}"
               fi
-              MOVE_TAG=true
-              MAKE_LATEST="true"
-            else
-              TAG_NAME="latest"
-              RELEASE_NAME="${{ inputs.release_title }}"
-              if [ -z "$RELEASE_NAME" ]; then
-                RELEASE_NAME="FEB Games (Latest)"
-              fi
-              MOVE_TAG=true
-              MAKE_LATEST="false"
             fi
-            PRERELEASE="${{ inputs.prerelease }}"
             DRAFT="${{ inputs.draft }}"
-          elif [ "${{ github.ref_type }}" = "tag" ]; then
-            TAG_NAME="${{ github.ref_name }}"
-            RELEASE_NAME="Release ${TAG_NAME}"
-            PRERELEASE=false
-            DRAFT=false
-            MOVE_TAG=false
-            MAKE_LATEST="true"
-          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            TAG_NAME="latest"
-            RELEASE_NAME="FEB Games (Latest)"
-            PRERELEASE=false
-            DRAFT=false
-            MOVE_TAG=true
-            MAKE_LATEST="false"
-          else
-            echo "Unexpected trigger ref ${{ github.ref }}"
-            exit 1
+            PRERELEASE="${{ inputs.prerelease }}"
           fi
 
           echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
           echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
           echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
           echo "draft=${DRAFT}" >> "$GITHUB_OUTPUT"
-          echo "move_tag=${MOVE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "make_latest=${MAKE_LATEST}" >> "$GITHUB_OUTPUT"
+          echo "make_latest=$([ "$TAG_NAME" = "latest" ] && echo "false" || echo "true")" >> "$GITHUB_OUTPUT"
 
       - name: Update Git Tag
-        if: steps.meta.outputs.move_tag == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
