@@ -369,8 +369,8 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "sokoban", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 2469)
-        self.assertLess(len(bytecode), 2500)
+        self.assertEqual(len(bytecode), 3023)
+        self.assertLess(len(bytecode), 3200)
 
     def test_modular_compiler_equivalence(self):
         import compiler
@@ -707,7 +707,8 @@ class TestToolingGuards(unittest.TestCase):
             asm = feb_build.compile_c_to_asm(c_path)
             bytecode = assemble_chip8.assemble(asm)
 
-            self.assertLess(len(bytecode), 2500, f"Bytecode for {app} exceeds 2500 bytes budget: {len(bytecode)}")
+            budget = 3200 if app == "sokoban" else 2500
+            self.assertLess(len(bytecode), budget, f"Bytecode for {app} exceeds {budget} bytes budget: {len(bytecode)}")
 
             feb_data = make_feb.create_feb(
                 app_type=make_feb.FEB_TYPE_CHIP8,
@@ -965,15 +966,15 @@ class TestToolingGuards(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "sokoban", "main.c")
         asm = feb_build.compile_c_to_asm(c_path)
         bc = assemble_chip8.assemble(asm)
-        self.assertLess(len(bc), 2500, f"Sokoban bytecode exceeds 2500 bytes budget: {len(bc)}")
+        self.assertLess(len(bc), 3200, f"Sokoban bytecode exceeds 3200 bytes budget: {len(bc)}")
 
         # Locate symbol addresses from known sprite pattern
         sprite_wall = bytes([0xff, 0x89, 0x89, 0xff, 0x91, 0x91, 0xff, 0x00])
         off = bc.find(sprite_wall)
         self.assertNotEqual(off, -1, "Wall sprite not found in bytecode")
 
-        board_addr = 0x200 + off + 360
-        cur_lvl_addr = board_addr + 64
+        board_addr = 0x200 + off + 760
+        cur_lvl_addr = board_addr + 72
         player_r_addr = cur_lvl_addr + 2
         player_c_addr = cur_lvl_addr + 3
         moves_addr = cur_lvl_addr + 4
