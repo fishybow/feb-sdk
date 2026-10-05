@@ -114,25 +114,6 @@ class FebSimulator:
         self.show_stats = False
         self.running = True
 
-        # VM instance
-        self.vm = feb_vm.FebVM()
-        self.load_app(feb_path)
-
-        # Pygame display setup
-        self.window_w = NATIVE_WIDTH * self.scale
-        self.window_h = NATIVE_HEIGHT * self.scale
-
-        if not self.headless:
-            self.screen = self.pygame.display.set_mode((self.window_w, self.window_h), self.pygame.RESIZABLE)
-            self.update_window_title()
-            self.set_window_icon()
-        else:
-            self.screen = self.pygame.display.set_mode((self.window_w, self.window_h))
-
-        # 8-bit indexed surface for authentic monochrome OLED rendering
-        self.oled_surf = self.pygame.Surface((NATIVE_WIDTH, NATIVE_HEIGHT), depth=8)
-        self.apply_theme()
-
         # Clock & perf tracking
         self.clock = self.pygame.time.Clock()
         self.frame_count = 0
@@ -144,6 +125,25 @@ class FebSimulator:
         # UI Font for HUD / OSD
         self.osd_font = self.pygame.font.SysFont("menlo,consolas,courier,monospace", 13)
         self.osd_font_large = self.pygame.font.SysFont("menlo,consolas,courier,monospace", 16, bold=True)
+
+        # VM instance
+        self.vm = feb_vm.FebVM()
+        self.load_app(feb_path)
+
+        # 8-bit indexed surface for authentic monochrome OLED rendering
+        self.oled_surf = self.pygame.Surface((NATIVE_WIDTH, NATIVE_HEIGHT), depth=8)
+        self.apply_theme()
+
+        # Pygame display setup
+        self.window_w = NATIVE_WIDTH * self.scale
+        self.window_h = NATIVE_HEIGHT * self.scale
+
+        if not self.headless:
+            self.screen = self.pygame.display.set_mode((self.window_w, self.window_h), self.pygame.RESIZABLE)
+            self.update_window_title()
+            self.set_window_icon()
+        else:
+            self.screen = self.pygame.display.set_mode((self.window_w, self.window_h))
 
     def apply_theme(self):
         """Applies active color palette to 8-bit OLED surface."""
