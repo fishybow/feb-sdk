@@ -64,7 +64,7 @@ Flashiibo Gen3 features four physical buttons:
 ## Quickstart
 
 ### Pre-compiled Releases
-Pre-compiled `.feb` binaries for all games (2048, Flappy Bird, Sokoban, demos, and the complete ZIP bundle) are automatically built and published on the [GitHub Releases](https://github.com/fishybow/feb-sdk/releases) page on every update and version tag.
+Pre-compiled `.feb` binaries for all games (2048, Flappy Bird, Sokoban, and the complete ZIP bundle) are automatically built and published on the [GitHub Releases](https://github.com/fishybow/feb-sdk/releases) page on every update and version tag. Developer demos and starter templates remain available in [`examples/`](examples/).
 
 ### Prerequisites
 - Python 3.8 or newer

@@ -70,12 +70,13 @@ jobs:
           test -f dist/2048.feb || { echo "Missing 2048.feb"; exit 1; }
           test -f dist/flappy_bird.feb || { echo "Missing flappy_bird.feb"; exit 1; }
           test -f dist/sokoban.feb || { echo "Missing sokoban.feb"; exit 1; }
-          test -f dist/button_demo.feb || { echo "Missing button_demo.feb"; exit 1; }
-          test -f dist/draw_demo.feb || { echo "Missing draw_demo.feb"; exit 1; }
-          test -f dist/template.feb || { echo "Missing template.feb"; exit 1; }
           test -f dist/flashiibo-feb-games.zip || { echo "Missing flashiibo-feb-games.zip"; exit 1; }
           test -f dist/sha256sums.txt || { echo "Missing sha256sums.txt"; exit 1; }
-          echo "All artifacts present and verified."
+          # Verify demos and template are excluded from public release distribution
+          ! test -f dist/button_demo.feb || { echo "button_demo.feb should not be in release dist"; exit 1; }
+          ! test -f dist/draw_demo.feb || { echo "draw_demo.feb should not be in release dist"; exit 1; }
+          ! test -f dist/template.feb || { echo "template.feb should not be in release dist"; exit 1; }
+          echo "All game artifacts present and verified (demos remain in examples/)."
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -130,7 +131,7 @@ jobs:
               TAG_NAME="latest"
               RELEASE_NAME="${{ inputs.release_title }}"
               if [ -z "$RELEASE_NAME" ]; then
-                RELEASE_NAME="FEB Games & SDK Examples (Latest)"
+                RELEASE_NAME="FEB Games (Latest)"
               fi
               MOVE_TAG=true
               MAKE_LATEST="false"
@@ -146,7 +147,7 @@ jobs:
             MAKE_LATEST="true"
           elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
             TAG_NAME="latest"
-            RELEASE_NAME="FEB Games & SDK Examples (Latest)"
+            RELEASE_NAME="FEB Games (Latest)"
             PRERELEASE=false
             DRAFT=false
             MOVE_TAG=true
@@ -185,19 +186,18 @@ jobs:
             dist/flashiibo-feb-games.zip
             dist/sha256sums.txt
           body: |
-            ## Flashiibo FEB Games & Applications
+            ## Flashiibo FEB Games
 
-            Pre-compiled standalone `.feb` executables for **Flashiibo Pro Gen3** devices running **FEB Runner** (requires firmware >= 26.10.4).
+            Pre-compiled standalone `.feb` game executables for **Flashiibo Pro Gen3** devices running **FEB Runner** (requires firmware >= 26.10.4).
 
-            ### 🎮 Included Games & Applications
+            ### 🎮 Included Games
             - **`2048.feb`**: Classic 2048 puzzle game rendered at 128×64 with direct line sliding, animated tiles, and high-score tracking.
             - **`flappy_bird.feb`**: Flappy Bird arcade game with physics, procedural pipe generation, and collision detection.
             - **`sokoban.feb`**: 10-level Sokoban box-pushing puzzle game with immovable blocks and progress saving to flash storage.
-            - **`button_demo.feb`**: 4-button hardware input test and press counter.
-            - **`draw_demo.feb`**: Vector geometry & shape rendering demo (lines, rectangles, circles, strings).
-            - **`template.feb`**: Starter boilerplate application for custom game development.
-            - **`flashiibo-feb-games.zip`**: Complete bundle archive containing all `.feb` binaries and instructions.
+            - **`flashiibo-feb-games.zip`**: Complete bundle archive containing all game `.feb` binaries and instructions.
             - **`sha256sums.txt`**: SHA-256 verification checksums for all release binaries.
+
+            *(Note: Developer demos and starter templates remain available directly in the [source repository examples](https://github.com/fishybow/feb-sdk/tree/main/examples)).*
 
             ---
 
