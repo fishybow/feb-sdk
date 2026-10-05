@@ -365,10 +365,17 @@ class TestFebBuild(unittest.TestCase):
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 1837)
 
+    def test_build_sokoban_c(self):
+        c_path = os.path.join(REPO_ROOT, "examples", "sokoban", "main.c")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 2469)
+        self.assertLess(len(bytecode), 2500)
+
     def test_modular_compiler_equivalence(self):
         import compiler
         import c_compiler
-        for app in ["template", "button_demo", "draw_demo", "flappy_bird", "2048"]:
+        for app in ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban"]:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm_mod = compiler.compile_c_to_asm(c_path)
             asm_facade = c_compiler.compile_c_to_asm(c_path)
@@ -694,7 +701,7 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_all_sdk_examples_pure_c_compilation_and_packaging(self):
         """Guard: All SDK examples compile, assemble, and package into valid .feb binaries within budgets."""
-        examples = ["template", "button_demo", "draw_demo", "flappy_bird", "2048"]
+        examples = ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban"]
         for app in examples:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm = feb_build.compile_c_to_asm(c_path)
@@ -952,6 +959,106 @@ class TestToolingGuards(unittest.TestCase):
             if sim.exited:
                 break
         self.assertTrue(sim.exited, "draw_demo failed to exit on UP+DOWN chord")
+
+    def test_guard_sokoban_level_solving_and_immovable_blocks(self):
+        """Guard: Sokoban loads levels, enforces immovable block obstacles, solves levels, and handles restart/exit chords."""
+        c_path = os.path.join(REPO_ROOT, "examples", "sokoban", "main.c")
+        asm = feb_build.compile_c_to_asm(c_path)
+        bc = assemble_chip8.assemble(asm)
+        self.assertLess(len(bc), 2500, f"Sokoban bytecode exceeds 2500 bytes budget: {len(bc)}")
+
+        # Locate symbol addresses from known sprite pattern
+        sprite_wall = bytes([0xff, 0x89, 0x89, 0xff, 0x91, 0x91, 0xff, 0x00])
+        off = bc.find(sprite_wall)
+        self.assertNotEqual(off, -1, "Wall sprite not found in bytecode")
+
+        board_addr = 0x200 + off + 360
+        cur_lvl_addr = board_addr + 64
+        player_r_addr = cur_lvl_addr + 2
+        player_c_addr = cur_lvl_addr + 3
+        moves_addr = cur_lvl_addr + 4
+        pushes_addr = cur_lvl_addr + 5
+        game_state_addr = cur_lvl_addr + 6
+
+        sim = SimChip8(bc)
+
+        def step_until_getkeys(sim_inst, max_steps=10000):
+            steps = 0
+            while steps < max_steps and not sim_inst.exited:
+                op = (sim_inst.mem[sim_inst.pc] << 8) | sim_inst.mem[sim_inst.pc + 1]
+                if (op & 0xF0FF) == 0xF0B0:
+                    return steps
+                sim_inst.step()
+                steps += 1
+            return steps
+
+        def send_button(sim_inst, mask):
+            step_until_getkeys(sim_inst)
+            sim_inst.keys_pressed = mask
+            sim_inst.step()
+            step_until_getkeys(sim_inst)
+            sim_inst.keys_pressed = 0
+            sim_inst.step()
+            step_until_getkeys(sim_inst)
+
+        # Boot until initial frame rendered and waiting for keys
+        step_until_getkeys(sim)
+        self.assertEqual(sim.mem[cur_lvl_addr], 0)
+        self.assertEqual(sim.mem[player_r_addr], 2)
+        self.assertEqual(sim.mem[player_c_addr], 2)
+        self.assertEqual(sim.mem[game_state_addr], 0)
+
+        # Level 1 Solution: 3x RIGHT (0x08)
+        # Move 1: RIGHT to (2, 3)
+        send_button(sim, 0x08)
+        self.assertEqual(sim.mem[player_r_addr], 2)
+        self.assertEqual(sim.mem[player_c_addr], 3)
+        self.assertEqual(sim.mem[moves_addr], 1)
+        self.assertEqual(sim.mem[pushes_addr], 0)
+
+        # Move 2: RIGHT pushes box to (2, 5), player to (2, 4)
+        send_button(sim, 0x08)
+        self.assertEqual(sim.mem[player_r_addr], 2)
+        self.assertEqual(sim.mem[player_c_addr], 4)
+        self.assertEqual(sim.mem[moves_addr], 2)
+        self.assertEqual(sim.mem[pushes_addr], 1)
+
+        # Move 3: RIGHT pushes box to target diamond at (2, 6), player to (2, 5)
+        send_button(sim, 0x08)
+        self.assertEqual(sim.mem[player_r_addr], 2)
+        self.assertEqual(sim.mem[player_c_addr], 5)
+        self.assertEqual(sim.mem[moves_addr], 3)
+        self.assertEqual(sim.mem[pushes_addr], 2)
+        self.assertEqual(sim.mem[game_state_addr], 1, "Level 1 should transition to STATE_LEVEL_CLEAR")
+
+        # Press key to advance to Level 2
+        send_button(sim, 0x08)
+        self.assertEqual(sim.mem[cur_lvl_addr], 1)
+        self.assertEqual(sim.mem[game_state_addr], 0)
+        self.assertEqual(sim.mem[player_r_addr], 2)
+        self.assertEqual(sim.mem[player_c_addr], 2)
+
+        # On Level 2, player moves RIGHT to (2, 3)
+        send_button(sim, 0x08)
+        self.assertEqual(sim.mem[player_c_addr], 3)
+        self.assertEqual(sim.mem[moves_addr], 1)
+
+        # Verify immovable obstacle: immovable wall at (2, 4) blocks further RIGHT movement
+        send_button(sim, 0x08)
+        self.assertEqual(sim.mem[player_c_addr], 3, "Player must not move through immovable wall obstacle")
+        self.assertEqual(sim.mem[moves_addr], 1, "Moves count must not increment on blocked move")
+
+        # Restart chord: BACK + OK (LEFT + RIGHT: 0x04 | 0x08 = 0x0C)
+        send_button(sim, 0x0C)
+        self.assertEqual(sim.mem[player_r_addr], 2)
+        self.assertEqual(sim.mem[player_c_addr], 2)
+        self.assertEqual(sim.mem[moves_addr], 0, "Restart chord must reset level moves")
+        self.assertFalse(sim.exited, "Restart chord should not exit application")
+
+        # Exit chord: UP + DOWN (0x01 | 0x02 = 0x03)
+        sim.keys_pressed = 0x03
+        sim.step()
+        self.assertTrue(sim.exited, "Sokoban failed to exit on UP+DOWN hardware chord")
 
 if __name__ == "__main__":
     unittest.main()

@@ -109,7 +109,13 @@ feb-sdk/
 │   ├── button_demo/       <-- Hardware 4-button input demo & press counter (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
-│   ├── features_demo/     <-- Custom VM extensions showcase: geometry, text, getkeys (128x64)
+│   ├── draw_demo/         <-- Vector geometry & shapes demo application (128x64)
+│   │   ├── main.c
+│   │   └── Makefile
+│   ├── flappy_bird/       <-- Flappy Bird arcade game with physics & collision (128x64)
+│   │   ├── main.c
+│   │   └── Makefile
+│   ├── sokoban/           <-- 10-level Sokoban puzzle game with immovable blocks & saving (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
 │   └── template/          <-- Starter template with 4-way movement (128x64)
