@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name for release (default: "latest")'
+        description: 'Tag / version name (leave blank for today date yy.mm.dd)'
         required: false
-        default: 'latest'
+        default: ''
       draft:
         description: 'Publish as draft release'
         required: false
@@ -94,18 +94,29 @@ jobs:
       - name: Determine Release Metadata
         id: meta
         run: |
-          TAG_NAME="latest"
-          RELEASE_NAME="FEB Games (Latest)"
+          # 1. Check if an explicit tag was specified via workflow_dispatch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag_name }}" ]; then
+            TAG_NAME="${{ inputs.tag_name }}"
+          else
+            # 2. Check if a tag points directly to the commit (e.g. pushed by make publish)
+            COMMIT_TAG=$(git tag --points-at HEAD | grep -E '^[0-9]{2}\.[0-9]{2}\.[0-9]{2}' | head -n 1)
+            if [ -z "$COMMIT_TAG" ]; then
+              COMMIT_TAG=$(git tag --points-at HEAD | head -n 1)
+            fi
+
+            if [ -n "$COMMIT_TAG" ]; then
+              TAG_NAME="$COMMIT_TAG"
+            else
+              # 3. Fallback to today's date in yy.mm.dd format
+              TAG_NAME=$(date +'%y.%m.%d')
+            fi
+          fi
+
+          RELEASE_NAME="Release ${TAG_NAME}"
           DRAFT="false"
           PRERELEASE="false"
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ -n "${{ inputs.tag_name }}" ]; then
-              TAG_NAME="${{ inputs.tag_name }}"
-              if [ "$TAG_NAME" != "latest" ]; then
-                RELEASE_NAME="Release ${TAG_NAME}"
-              fi
-            fi
             DRAFT="${{ inputs.draft }}"
             PRERELEASE="${{ inputs.prerelease }}"
           fi
@@ -114,7 +125,7 @@ jobs:
           echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
           echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
           echo "draft=${DRAFT}" >> "$GITHUB_OUTPUT"
-          echo "make_latest=$([ "$TAG_NAME" = "latest" ] && echo "false" || echo "true")" >> "$GITHUB_OUTPUT"
+          echo "make_latest=true" >> "$GITHUB_OUTPUT"
 
       - name: Update Git Tag
         run: |

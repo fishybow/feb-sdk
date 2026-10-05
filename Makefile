@@ -7,6 +7,7 @@ EXAMPLES := $(GAMES) $(DEMOS)
 BUILD_DIR := build
 DIST_DIR := dist
 PACKAGE_ZIP := flashiibo-feb-games.zip
+VERSION ?= $(shell date +'%y.%m.%d')
 
 .DEFAULT_GOAL := help
 .PHONY: help all clean test dist publish $(EXAMPLES)
@@ -22,7 +23,7 @@ help:
 	@echo "  dist        Package public release games and checksums into $(DIST_DIR)/"
 	@echo "  test        Run automated verification test suite"
 	@echo "  clean       Clean build artifacts and build directory"
-	@echo "  publish     Push develop branch to main"
+	@echo "  publish     Tag commit with version ($(VERSION)) and push develop to main"
 	@echo ""
 	@echo "Games (included in public release):"
 	@echo "  2048          Build 2048 puzzle game"
@@ -53,8 +54,8 @@ dist: all
 	@for game in $(GAMES); do \
 		cp $(BUILD_DIR)/$$game.feb $(DIST_DIR)/; \
 	done
-	@echo "Flashiibo Executable Binary (.feb) Games" > $(DIST_DIR)/README.txt
-	@echo "========================================" >> $(DIST_DIR)/README.txt
+	@echo "Flashiibo Executable Binary (.feb) Games - Release $(VERSION)" > $(DIST_DIR)/README.txt
+	@echo "============================================================" >> $(DIST_DIR)/README.txt
 	@echo "Compatible with Flashiibo Pro Gen3 (firmware >= 26.10.4)." >> $(DIST_DIR)/README.txt
 	@echo "" >> $(DIST_DIR)/README.txt
 	@echo "Installation:" >> $(DIST_DIR)/README.txt
@@ -73,7 +74,7 @@ dist: all
 	@cd $(DIST_DIR) && zip -9 $(PACKAGE_ZIP) *.feb README.txt
 	@cd $(DIST_DIR) && sha256sum *.feb $(PACKAGE_ZIP) > sha256sums.txt
 	@echo ""
-	@echo "=== Distribution Artifacts Packaged in $(DIST_DIR)/ ==="
+	@echo "=== Distribution Artifacts Packaged in $(DIST_DIR)/ (v$(VERSION)) ==="
 	@ls -la $(DIST_DIR)
 
 test:
@@ -81,7 +82,9 @@ test:
 	@python3 -m unittest discover -s test -p "test_*.py" -v
 
 publish:
-	@echo "=== Publishing develop branch to main ==="
+	@echo "=== Tagging commit with version $(VERSION) and publishing to main ==="
+	git tag -f $(VERSION)
+	git push origin $(VERSION) -f
 	git push origin develop:main
 
 clean:
