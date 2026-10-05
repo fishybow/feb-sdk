@@ -739,8 +739,9 @@ __DIVMOD8_NO_SUB:
                 return dest_reg
             elif op == "~":
                 self.compile_expr_into(expr["expr"], dest_reg, ctx)
-                out.append("        load vb, 255")
-                out.append(f"        xor {dest_reg}, vb")
+                scratch = "ve" if dest_reg != "ve" else "vd"
+                out.append(f"        load {scratch}, 255")
+                out.append(f"        xor {dest_reg}, {scratch}")
                 return dest_reg
             return dest_reg
 
@@ -1123,57 +1124,71 @@ __DIVMOD8_NO_SUB:
             # feb_save_flags(data, len) or feb_save_flags(path, data, len)
             len_val = args[-1]["val"] if args[-1]["type"] == "num" else 1
             first_arg = args[1] if len(args) == 3 else args[0]
-            if first_arg["type"] == "addrof":
+            var_name = None
+            if first_arg.get("type") == "addrof":
                 target = first_arg["target"]
-                if target["type"] == "ident":
+                if target.get("type") == "ident":
                     var_name = target["name"]
-                    if var_name in ctx["locals"]:
-                        reg = ctx["locals"][var_name]
-                        out.append(f"        load v0, {reg}")
-                    elif var_name in self.globals:
-                        out.append(f"        load i, {var_name.upper()}")
-                        out.append("        restore v0")
-                elif target["type"] == "field":
+                elif target.get("type") == "field":
                     st_target = target["target"]
                     st_field = target["field"]
-                    if st_target["type"] == "ident":
-                        var_name = st_target["name"]
-                        if var_name in self.globals and self.globals[var_name]["type"] == "struct":
-                            st_name = self.globals[var_name]["struct_name"]
+                    if st_target.get("type") == "ident":
+                        st_var = st_target["name"]
+                        if st_var in self.globals and self.globals[st_var]["type"] == "struct":
+                            st_name = self.globals[st_var]["struct_name"]
                             offset = self.struct_types[st_name]["fields"][st_field]["offset"]
-                            label = var_name.upper()
+                            label = st_var.upper()
                             loc_str = label if offset == 0 else f"{label} + {offset}"
                             out.append(f"        load i, {loc_str}")
                             out.append("        restore v0")
-            out.append("        saveflags v0")
+            elif first_arg.get("type") == "ident":
+                var_name = first_arg["name"]
+
+            reg_idx = min(15, max(0, len_val - 1))
+            end_r = f"v{hex(reg_idx)[2:]}"
+            if var_name:
+                if var_name in ctx["locals"]:
+                    reg = ctx["locals"][var_name]
+                    out.append(f"        load v0, {reg}")
+                elif var_name in self.globals:
+                    out.append(f"        load i, {var_name.upper()}")
+                    out.append(f"        restore {end_r}")
+            out.append(f"        saveflags {end_r}")
             return dest_reg
 
         if func_name == "feb_load_flags":
             len_val = args[-1]["val"] if args[-1]["type"] == "num" else 1
             first_arg = args[1] if len(args) == 3 else args[0]
-            out.append("        loadflags v0")
-            if first_arg["type"] == "addrof":
+            reg_idx = min(15, max(0, len_val - 1))
+            end_r = f"v{hex(reg_idx)[2:]}"
+            out.append(f"        loadflags {end_r}")
+            var_name = None
+            if first_arg.get("type") == "addrof":
                 target = first_arg["target"]
-                if target["type"] == "ident":
+                if target.get("type") == "ident":
                     var_name = target["name"]
-                    if var_name in ctx["locals"]:
-                        reg = ctx["locals"][var_name]
-                        out.append(f"        load {reg}, v0")
-                    elif var_name in self.globals:
-                        out.append(f"        load i, {var_name.upper()}")
-                        out.append("        save v0")
-                elif target["type"] == "field":
+                elif target.get("type") == "field":
                     st_target = target["target"]
                     st_field = target["field"]
-                    if st_target["type"] == "ident":
-                        var_name = st_target["name"]
-                        if var_name in self.globals and self.globals[var_name]["type"] == "struct":
-                            st_name = self.globals[var_name]["struct_name"]
+                    if st_target.get("type") == "ident":
+                        st_var = st_target["name"]
+                        if st_var in self.globals and self.globals[st_var]["type"] == "struct":
+                            st_name = self.globals[st_var]["struct_name"]
                             offset = self.struct_types[st_name]["fields"][st_field]["offset"]
-                            label = var_name.upper()
+                            label = st_var.upper()
                             loc_str = label if offset == 0 else f"{label} + {offset}"
                             out.append(f"        load i, {loc_str}")
-                            out.append("        save v0")
+                            out.append(f"        save {end_r}")
+            elif first_arg.get("type") == "ident":
+                var_name = first_arg["name"]
+
+            if var_name:
+                if var_name in ctx["locals"]:
+                    reg = ctx["locals"][var_name]
+                    out.append(f"        load {reg}, v0")
+                elif var_name in self.globals:
+                    out.append(f"        load i, {var_name.upper()}")
+                    out.append(f"        save {end_r}")
             return dest_reg
 
         # ---------------------------------------------------------------------

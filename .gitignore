@@ -27,6 +27,7 @@ wheels/
 *.d
 *.feb
 *.asm
+*.sav
 
 # Editor / OS files
 .DS_Store

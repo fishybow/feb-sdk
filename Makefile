@@ -1,7 +1,7 @@
 # Flashiibo FEB (Flashiibo Executable Binary) Root Makefile
 # Targets the Flashiibo Gen3 FEB runtime (Beta & Experimental).
 
-GAMES := 2048 flappy_bird sokoban
+GAMES := 2048 flappy_bird sokoban digital_pet
 DEMOS := template button_demo draw_demo
 EXAMPLES := $(GAMES) $(DEMOS)
 BUILD_DIR := build
@@ -30,6 +30,7 @@ help:
 	@echo "  2048          Build 2048 puzzle game"
 	@echo "  flappy_bird   Build Flappy Bird sprite demo application"
 	@echo "  sokoban       Build 10-level Sokoban puzzle game"
+	@echo "  digital_pet   Build advanced virtual pet simulation with persistence"
 	@echo ""
 	@echo "Developer Examples & Demos (kept in examples/):"
 	@echo "  template      Build starter template application"

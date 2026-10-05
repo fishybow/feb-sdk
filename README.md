@@ -64,7 +64,7 @@ Flashiibo Gen3 features four physical buttons:
 ## Quickstart
 
 ### Pre-compiled Releases
-Pre-compiled `.feb` binaries for all games (2048, Flappy Bird, Sokoban, and the complete ZIP bundle) are automatically built and published on the [GitHub Releases](https://github.com/fishybow/feb-sdk/releases) page on every update and version tag. Developer demos and starter templates remain available in [`examples/`](examples/).
+Pre-compiled `.feb` binaries for all games (2048, Flappy Bird, Sokoban, Digital Pet, and the complete ZIP bundle) are automatically built and published on the [GitHub Releases](https://github.com/fishybow/feb-sdk/releases) page on every update and version tag. Developer demos and starter templates remain available in [`examples/`](examples/).
 
 ### Prerequisites
 - Python 3.8 or newer
@@ -83,9 +83,10 @@ make all
 make dist
 
 # Test games in the desktop Pygame simulator
-make sim                  # Runs default 2048.feb
-make sim GAME=sokoban     # Runs Sokoban
-make sim GAME=flappy_bird # Runs Flappy Bird
+make sim                   # Runs default 2048.feb
+make sim GAME=digital_pet  # Runs Digital Pet
+make sim GAME=sokoban      # Runs Sokoban
+make sim GAME=flappy_bird  # Runs Flappy Bird
 
 # Run automated test suite
 make test
@@ -125,6 +126,9 @@ feb-sdk/
 │   │   ├── main.c
 │   │   └── Makefile
 │   ├── button_demo/       <-- Hardware 4-button input demo & press counter (128x64)
+│   │   ├── main.c
+│   │   └── Makefile
+│   ├── digital_pet/       <-- Advanced virtual pet simulation with 16-byte persistent saving (128x64)
 │   │   ├── main.c
 │   │   └── Makefile
 │   ├── draw_demo/         <-- Vector geometry & shapes demo application (128x64)

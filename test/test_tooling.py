@@ -375,7 +375,7 @@ class TestFebBuild(unittest.TestCase):
     def test_modular_compiler_equivalence(self):
         import compiler
         import c_compiler
-        for app in ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban"]:
+        for app in ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban", "digital_pet"]:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm_mod = compiler.compile_c_to_asm(c_path)
             asm_facade = c_compiler.compile_c_to_asm(c_path)
@@ -701,13 +701,13 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_all_sdk_examples_pure_c_compilation_and_packaging(self):
         """Guard: All SDK examples compile, assemble, and package into valid .feb binaries within budgets."""
-        examples = ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban"]
+        examples = ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban", "digital_pet"]
         for app in examples:
             c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
             asm = feb_build.compile_c_to_asm(c_path)
             bytecode = assemble_chip8.assemble(asm)
 
-            budget = 3200 if app == "sokoban" else 2500
+            budget = 3584 if app == "digital_pet" else (3200 if app == "sokoban" else 2500)
             self.assertLess(len(bytecode), budget, f"Bytecode for {app} exceeds {budget} bytes budget: {len(bytecode)}")
 
             feb_data = make_feb.create_feb(

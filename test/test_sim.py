@@ -169,7 +169,7 @@ class TestFebSimulator(unittest.TestCase):
     """Verifies Pygame-based simulator integration and headless execution."""
 
     def test_simulator_headless_runs_all_sdk_games(self):
-        games = ["2048", "button_demo", "draw_demo", "flappy_bird", "sokoban", "template"]
+        games = ["2048", "button_demo", "draw_demo", "flappy_bird", "sokoban", "digital_pet", "template"]
         with tempfile.TemporaryDirectory() as tmpdir:
             for g in games:
                 feb_file = os.path.join(BUILD_DIR, f"{g}.feb")
@@ -186,6 +186,49 @@ class TestFebSimulator(unittest.TestCase):
                 sim.run(max_frames=30, screenshot_path=shot_file)
                 self.assertTrue(os.path.exists(shot_file), f"Screenshot was not generated for {g}")
                 self.assertGreater(os.path.getsize(shot_file), 100)
+
+    def test_digital_pet_simulation_and_persistence(self):
+        pet_feb = os.path.join(BUILD_DIR, "digital_pet.feb")
+        if not os.path.exists(pet_feb):
+            return
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dest_feb = os.path.join(tmpdir, "digital_pet.feb")
+            import shutil
+            shutil.copyfile(pet_feb, dest_feb)
+
+            # Boot session 1
+            vm1 = feb_vm.FebVM()
+            vm1.load_feb(dest_feb)
+            for _ in range(10):
+                vm1.step_frame()
+
+            # Verify initial defaults
+            self.assertEqual(vm1.rpl_flags[0], 0x50)  # Magic 'P'
+            self.assertEqual(vm1.rpl_flags[1], 0)     # Stage Egg
+            self.assertEqual(vm1.rpl_flags[15], 1)    # Actions 1
+
+            # Press UP to incubate egg
+            vm1.press_key(feb_vm.FEB_KEY_UP)
+            for _ in range(3):
+                vm1.step_frame()
+            vm1.release_key(feb_vm.FEB_KEY_UP)
+            for _ in range(5):
+                vm1.step_frame()
+
+            # Should evolve to baby and action counter increments
+            self.assertEqual(vm1.rpl_flags[1], 1)     # Stage Baby
+            self.assertEqual(vm1.rpl_flags[15], 2)    # Actions 2
+            vm1.flush_save_sidecar()
+
+            # Boot session 2 from persistent .sav sidecar
+            vm2 = feb_vm.FebVM()
+            vm2.load_feb(dest_feb)
+            for _ in range(5):
+                vm2.step_frame()
+
+            self.assertEqual(vm2.rpl_flags[0], 0x50)
+            self.assertEqual(vm2.rpl_flags[1], 1)     # Preserved Stage Baby
+            self.assertEqual(vm2.rpl_flags[15], 2)    # Preserved Actions
 
 
 if __name__ == "__main__":
