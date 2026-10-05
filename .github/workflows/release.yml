@@ -207,6 +207,6 @@ jobs:
             3. On your Flashiibo, scroll to **FEB Runner**, select your game, and press **OK**!
 
             > [!TIP]
-            > **Emergency Exit Chord:** Press **UP + DOWN + BACK** simultaneously at any time to return immediately to the FEB Runner menu.
+            > **Emergency Exit Chord:** Press **UP + DOWN** simultaneously at any time to return immediately to the FEB Runner menu.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

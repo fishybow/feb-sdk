@@ -56,7 +56,7 @@ dist: all
 	@echo "3. On your Flashiibo, navigate to 'FEB Runner', select the app, and press OK!" >> $(DIST_DIR)/README.txt
 	@echo "" >> $(DIST_DIR)/README.txt
 	@echo "Emergency Exit Chord:" >> $(DIST_DIR)/README.txt
-	@echo "Press UP + DOWN + BACK simultaneously to return to the FEB Runner menu." >> $(DIST_DIR)/README.txt
+	@echo "Press UP and DOWN simultaneously to return to the FEB Runner menu." >> $(DIST_DIR)/README.txt
 	@echo "" >> $(DIST_DIR)/README.txt
 	@echo "Included applications:" >> $(DIST_DIR)/README.txt
 	@for app in $(EXAMPLES); do \
