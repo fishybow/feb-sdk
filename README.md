@@ -2,6 +2,7 @@
 
 [![Status: Beta](https://img.shields.io/badge/status-beta%20%2F%20experimental-orange.svg)](#status--experimental-warning)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Build & Release](https://github.com/fishybow/feb-sdk/actions/workflows/release.yml/badge.svg)](https://github.com/fishybow/feb-sdk/actions/workflows/release.yml)
 
 > [!WARNING]
 > ### BETA & EXPERIMENTAL WARNING
@@ -62,6 +63,9 @@ Flashiibo Gen3 features four physical buttons:
 
 ## Quickstart
 
+### Pre-compiled Releases
+Pre-compiled `.feb` binaries for all games (2048, Flappy Bird, Sokoban, demos, and the complete ZIP bundle) are automatically built and published on the [GitHub Releases](https://github.com/fishybow/feb-sdk/releases) page on every update and version tag.
+
 ### Prerequisites
 - Python 3.8 or newer
 - GNU Make
@@ -74,6 +78,9 @@ cd feb-sdk
 
 # Build all applications into build/
 make all
+
+# Package distribution files into dist/ (binaries, zip bundle, sha256sums)
+make dist
 
 # Run test suite
 make test

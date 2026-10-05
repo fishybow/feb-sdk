@@ -1,0 +1,212 @@
+name: Build and Release FEB Games
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for release (leave blank for "latest" or specify e.g. v1.0.0)'
+        required: false
+        default: ''
+      release_title:
+        description: 'Release title override (leave blank for automatic title)'
+        required: false
+        default: ''
+      draft:
+        description: 'Publish as draft release'
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Publish as pre-release'
+        required: false
+        type: boolean
+        default: false
+      publish_release:
+        description: 'Publish GitHub release (uncheck to only run tests & build artifacts)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run verification test suite
+        run: make test
+
+      - name: Build all FEB games & package distribution
+        run: make dist
+
+      - name: Verify build artifacts
+        run: |
+          echo "=== Verifying Built Artifacts ==="
+          ls -lh dist/
+          test -f dist/2048.feb || { echo "Missing 2048.feb"; exit 1; }
+          test -f dist/flappy_bird.feb || { echo "Missing flappy_bird.feb"; exit 1; }
+          test -f dist/sokoban.feb || { echo "Missing sokoban.feb"; exit 1; }
+          test -f dist/button_demo.feb || { echo "Missing button_demo.feb"; exit 1; }
+          test -f dist/draw_demo.feb || { echo "Missing draw_demo.feb"; exit 1; }
+          test -f dist/template.feb || { echo "Missing template.feb"; exit 1; }
+          test -f dist/flashiibo-feb-games.zip || { echo "Missing flashiibo-feb-games.zip"; exit 1; }
+          test -f dist/sha256sums.txt || { echo "Missing sha256sums.txt"; exit 1; }
+          echo "All artifacts present and verified."
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flashiibo-feb-games
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (
+        startsWith(github.ref, 'refs/tags/v') ||
+        github.ref == 'refs/heads/main' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release != 'false')
+      )
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: flashiibo-feb-games
+          path: dist/
+
+      - name: Determine Release Metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT_TAG="${{ inputs.tag_name }}"
+            if [ -n "$INPUT_TAG" ]; then
+              TAG_NAME="$INPUT_TAG"
+              RELEASE_NAME="${{ inputs.release_title }}"
+              if [ -z "$RELEASE_NAME" ]; then
+                RELEASE_NAME="Release ${TAG_NAME}"
+              fi
+              MOVE_TAG=true
+              MAKE_LATEST="true"
+            else
+              TAG_NAME="latest"
+              RELEASE_NAME="${{ inputs.release_title }}"
+              if [ -z "$RELEASE_NAME" ]; then
+                RELEASE_NAME="FEB Games & SDK Examples (Latest)"
+              fi
+              MOVE_TAG=true
+              MAKE_LATEST="false"
+            fi
+            PRERELEASE="${{ inputs.prerelease }}"
+            DRAFT="${{ inputs.draft }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG_NAME="${{ github.ref_name }}"
+            RELEASE_NAME="Release ${TAG_NAME}"
+            PRERELEASE=false
+            DRAFT=false
+            MOVE_TAG=false
+            MAKE_LATEST="true"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            TAG_NAME="latest"
+            RELEASE_NAME="FEB Games & SDK Examples (Latest)"
+            PRERELEASE=false
+            DRAFT=false
+            MOVE_TAG=true
+            MAKE_LATEST="false"
+          else
+            echo "Unexpected trigger ref ${{ github.ref }}"
+            exit 1
+          fi
+
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "draft=${DRAFT}" >> "$GITHUB_OUTPUT"
+          echo "move_tag=${MOVE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "make_latest=${MAKE_LATEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Git Tag
+        if: steps.meta.outputs.move_tag == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "${{ steps.meta.outputs.tag_name }}" "${{ github.sha }}"
+          git push -f origin "${{ steps.meta.outputs.tag_name }}"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: ${{ steps.meta.outputs.release_name }}
+          draft: ${{ steps.meta.outputs.draft == 'true' }}
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
+          make_latest: ${{ steps.meta.outputs.make_latest }}
+          generate_release_notes: true
+          files: |
+            dist/*.feb
+            dist/flashiibo-feb-games.zip
+            dist/sha256sums.txt
+          body: |
+            ## Flashiibo FEB Games & Applications
+
+            Pre-compiled standalone `.feb` executables for **Flashiibo Pro Gen3** devices running **FEB Runner** (requires firmware >= 26.10.4).
+
+            ### 🎮 Included Games & Applications
+            - **`2048.feb`**: Classic 2048 puzzle game rendered at 128×64 with direct line sliding, animated tiles, and high-score tracking.
+            - **`flappy_bird.feb`**: Flappy Bird arcade game with physics, procedural pipe generation, and collision detection.
+            - **`sokoban.feb`**: 10-level Sokoban box-pushing puzzle game with immovable blocks and progress saving to flash storage.
+            - **`button_demo.feb`**: 4-button hardware input test and press counter.
+            - **`draw_demo.feb`**: Vector geometry & shape rendering demo (lines, rectangles, circles, strings).
+            - **`template.feb`**: Starter boilerplate application for custom game development.
+            - **`flashiibo-feb-games.zip`**: Complete bundle archive containing all `.feb` binaries and instructions.
+            - **`sha256sums.txt`**: SHA-256 verification checksums for all release binaries.
+
+            ---
+
+            ### 📲 How to Install & Play on Flashiibo
+            1. Connect your **Flashiibo Pro Gen3** to your computer or phone via USB or Web Bluetooth using **Flashiibo Pro Tools** (Web or Mobile).
+            2. Upload any `.feb` file into the `/feb/` folder on your device's flash storage.
+            3. On your Flashiibo, scroll to **FEB Runner**, select your game, and press **OK**!
+
+            > [!TIP]
+            > **Emergency Exit Chord:** Press **UP + DOWN + BACK** simultaneously at any time to return immediately to the FEB Runner menu.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

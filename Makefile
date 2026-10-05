@@ -3,9 +3,11 @@
 
 EXAMPLES := 2048 template button_demo draw_demo flappy_bird sokoban
 BUILD_DIR := build
+DIST_DIR := dist
+PACKAGE_ZIP := flashiibo-feb-games.zip
 
 .DEFAULT_GOAL := help
-.PHONY: help all clean test publish $(EXAMPLES)
+.PHONY: help all clean test dist publish $(EXAMPLES)
 
 help:
 	@echo "Flashiibo FEB SDK Build System"
@@ -15,6 +17,7 @@ help:
 	@echo "Available targets:"
 	@echo "  help        Display this help message (default)"
 	@echo "  all         Build all example applications into $(BUILD_DIR)/"
+	@echo "  dist        Package all games and checksums into $(DIST_DIR)/"
 	@echo "  test        Run automated verification test suite"
 	@echo "  clean       Clean build artifacts and build directory"
 	@echo "  publish     Push develop branch to main"
@@ -40,6 +43,32 @@ $(EXAMPLES):
 	@cp examples/$@/$@.feb $(BUILD_DIR)/
 	@echo "Installed $(BUILD_DIR)/$@.feb"
 
+dist: all
+	@mkdir -p $(DIST_DIR)
+	@cp $(BUILD_DIR)/*.feb $(DIST_DIR)/
+	@echo "Flashiibo Executable Binary (.feb) Games & Applications" > $(DIST_DIR)/README.txt
+	@echo "======================================================" >> $(DIST_DIR)/README.txt
+	@echo "Compatible with Flashiibo Pro Gen3 (firmware >= 26.10.4)." >> $(DIST_DIR)/README.txt
+	@echo "" >> $(DIST_DIR)/README.txt
+	@echo "Installation:" >> $(DIST_DIR)/README.txt
+	@echo "1. Connect your Flashiibo Pro Gen3 via USB or Web Bluetooth using Flashiibo Pro Tools." >> $(DIST_DIR)/README.txt
+	@echo "2. Upload the .feb file(s) to the /feb/ folder on the device flash storage." >> $(DIST_DIR)/README.txt
+	@echo "3. On your Flashiibo, navigate to 'FEB Runner', select the app, and press OK!" >> $(DIST_DIR)/README.txt
+	@echo "" >> $(DIST_DIR)/README.txt
+	@echo "Emergency Exit Chord:" >> $(DIST_DIR)/README.txt
+	@echo "Press UP + DOWN + BACK simultaneously to return to the FEB Runner menu." >> $(DIST_DIR)/README.txt
+	@echo "" >> $(DIST_DIR)/README.txt
+	@echo "Included applications:" >> $(DIST_DIR)/README.txt
+	@for app in $(EXAMPLES); do \
+		echo "  - $$app.feb" >> $(DIST_DIR)/README.txt; \
+	done
+	@rm -f $(DIST_DIR)/$(PACKAGE_ZIP) $(DIST_DIR)/sha256sums.txt
+	@cd $(DIST_DIR) && zip -9 $(PACKAGE_ZIP) *.feb README.txt
+	@cd $(DIST_DIR) && sha256sum *.feb $(PACKAGE_ZIP) > sha256sums.txt
+	@echo ""
+	@echo "=== Distribution Artifacts Packaged in $(DIST_DIR)/ ==="
+	@ls -la $(DIST_DIR)
+
 test:
 	@echo "=== Running FEB Tooling & Build Verification Tests ==="
 	@python3 -m unittest discover -s test -p "test_*.py" -v
@@ -49,7 +78,7 @@ publish:
 	git push origin develop:main
 
 clean:
-	@rm -rf $(BUILD_DIR)
+	@rm -rf $(BUILD_DIR) $(DIST_DIR)
 	@for app in $(EXAMPLES); do \
 		$(MAKE) -C examples/$$app clean; \
 	done
