@@ -184,7 +184,6 @@ int main(void) {
                     bird_y -= dy;
                 } else {
                     bird_y = 1;
-                    jump_timer = 0;
                 }
                 jump_timer--;
                 fall_speed = 0;

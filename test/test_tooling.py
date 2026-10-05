@@ -363,7 +363,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 1845)
+        self.assertEqual(len(bytecode), 1837)
 
     def test_modular_compiler_equivalence(self):
         import compiler
@@ -887,6 +887,49 @@ class TestToolingGuards(unittest.TestCase):
             if sim2.exited:
                 break
         self.assertTrue(sim2.exited, "Flappy Bird failed to programmatically exit on BACK key press during gameplay")
+
+    def test_guard_flappy_bird_ceiling_gravity_no_stick(self):
+        """Guard: Flappy Bird does not stick to ceiling; jump_timer decays cleanly and bird falls under gravity."""
+        c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
+        asm = feb_build.compile_c_to_asm(c_path)
+        bc = assemble_chip8.assemble(asm)
+
+        data_pattern = bytes([0x16, 0x00, 0x00, 0x00])
+        data_offset = bc.find(data_pattern)
+        self.assertNotEqual(data_offset, -1)
+        by_addr = 0x200 + data_offset
+        jt_addr = 0x200 + data_offset + 1
+
+        sim = SimChip8(bc)
+        while not sim.waiting_for_key:
+            sim.step()
+
+        # Start game
+        sim.keys_pressed = 0x08
+        for _ in range(10):
+            sim.step()
+        sim.keys_pressed = 0x00
+
+        def step_frame(press_flap=False):
+            sim.keys_pressed = 0x08 if press_flap else 0x00
+            for _ in range(2000):
+                sim.step()
+                if sim.dt == 0 and _ > 200:
+                    break
+
+        # Flap to ceiling
+        for f in range(15):
+            step_frame(press_flap=(f % 2 == 0))
+
+        self.assertEqual(sim.mem[by_addr], 1, "Bird should reach ceiling at bird_y == 1")
+        self.assertNotEqual(sim.mem[jt_addr], 255, "jump_timer must not underflow to 255")
+
+        # Step frames with no input; bird must fall under gravity
+        for _ in range(10):
+            step_frame(press_flap=False)
+
+        self.assertGreater(sim.mem[by_addr], 1, "Bird remained stuck at ceiling; gravity failed to pull it down")
+        self.assertNotEqual(sim.mem[jt_addr], 255, "jump_timer underflowed to 255")
 
     def test_guard_draw_demo_execution(self):
         """Guard: draw_demo executes vector drawing and responds to UP+DOWN chord exit."""
