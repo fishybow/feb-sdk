@@ -82,7 +82,12 @@ make all
 # Package distribution files into dist/ (binaries, zip bundle, sha256sums)
 make dist
 
-# Run test suite
+# Test games in the desktop Pygame simulator
+make sim                  # Runs default 2048.feb
+make sim GAME=sokoban     # Runs Sokoban
+make sim GAME=flappy_bird # Runs Flappy Bird
+
+# Run automated test suite
 make test
 ```
 
@@ -93,6 +98,8 @@ make
 # Generates 2048.feb
 ```
 
+See [SIMULATOR.md](SIMULATOR.md) for complete manual testing controls, palette themes, and automated headless CI testing guides.
+
 ---
 
 ## Repository Layout
@@ -100,12 +107,16 @@ make
 ```
 feb-sdk/
 ├── README.md               <-- This documentation
+├── SIMULATOR.md            <-- Desktop simulator guide (manual & automated testing)
 ├── SPEC.md                 <-- 100-byte .feb binary container specification
 ├── LICENSE                 <-- MIT License
-├── Makefile                <-- Root build and test orchestrator
+├── Makefile                <-- Root build, simulation, and test orchestrator
 ├── include/
 │   └── feb.h              <-- Flashiibo C SDK definitions & prototypes
 ├── tools/
+│   ├── feb_sim.py         <-- Pygame-based desktop FEB simulator
+│   ├── feb_vm.py          <-- Virtual machine engine (CHIP-8 / SCHIP / Flashiibo)
+│   ├── feb_fonts.py       <-- Embedded u8g2 bitmap fonts & glyph decoder
 │   ├── feb_build.py       <-- C / Assembly compiler and packager
 │   ├── make_feb.py        <-- .feb binary container generator
 │   └── assemble_chip8.py  <-- Virtual machine bytecode assembler
@@ -129,7 +140,8 @@ feb-sdk/
 │       ├── main.c
 │       └── Makefile
 ├── test/                  <-- Automated test suite
-│   └── test_tooling.py
+│   ├── test_sim.py        <-- Simulator unit & integration tests
+│   └── test_tooling.py    <-- Compiler and packaging verification suite
 └── docs/
     └── c_development_guide.md <-- In-depth C programming guide
 ```

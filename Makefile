@@ -10,7 +10,7 @@ PACKAGE_ZIP := flashiibo-feb-games.zip
 VERSION ?= $(shell date +'%y.%m.%d')
 
 .DEFAULT_GOAL := help
-.PHONY: help all clean test dist publish $(EXAMPLES)
+.PHONY: help all clean test dist publish sim run $(EXAMPLES)
 
 help:
 	@echo "Flashiibo FEB SDK Build System"
@@ -20,6 +20,7 @@ help:
 	@echo "Available targets:"
 	@echo "  help        Display this help message (default)"
 	@echo "  all         Build all applications (games & demos) into $(BUILD_DIR)/"
+	@echo "  sim         Run FEB Simulator (e.g. make sim, make sim GAME=sokoban)"
 	@echo "  dist        Package public release games and checksums into $(DIST_DIR)/"
 	@echo "  test        Run automated verification test suite"
 	@echo "  clean       Clean build artifacts and build directory"
@@ -47,6 +48,9 @@ $(EXAMPLES):
 	@$(MAKE) -C examples/$@
 	@cp examples/$@/$@.feb $(BUILD_DIR)/
 	@echo "Installed $(BUILD_DIR)/$@.feb"
+
+sim run:
+	@python3 tools/feb_sim.py $(if $(GAME),$(if $(wildcard $(GAME)),$(GAME),$(BUILD_DIR)/$(GAME).feb),) $(SIM_ARGS)
 
 dist: all
 	@mkdir -p $(DIST_DIR)
