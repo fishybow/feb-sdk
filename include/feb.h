@@ -92,6 +92,24 @@ extern "C" {
  * Core SDK API Declarations
  * ------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------
+ * Screen Rotation Modes (for feb_set_rotation / FX9A ROTATE)
+ * ------------------------------------------------------------------------- */
+#define FEB_ROTATION_0        0   /* 0 degrees - Normal Landscape (128x64 default) */
+#define FEB_ROTATION_90       1   /* 90 degrees CW - Portrait (64x128, buttons right) */
+#define FEB_ROTATION_180      2   /* 180 degrees - Inverted Landscape (128x64) */
+#define FEB_ROTATION_270      3   /* 270 degrees CW - Inverted Portrait (64x128, buttons left) */
+
+/**
+ * @brief Sets the screen rotation transformation mode for display output.
+ *
+ * In 90 degree portrait mode (FEB_ROTATION_90), the virtual screen resolution is
+ * 64 wide x 128 high, mapped to the physical OLED with buttons on the right.
+ *
+ * @param rotation FEB_ROTATION_0, FEB_ROTATION_90, FEB_ROTATION_180, or FEB_ROTATION_270
+ */
+void feb_set_rotation(uint8_t rotation);
+
 /**
  * @brief Enables or disables high-resolution (128x64) Super-CHIP display mode.
  *

@@ -123,7 +123,7 @@ __DIVMOD8_LOOP:
         add vd, 1
         load ve, vd
         sub ve, vb
-        skip.eq vf, 0
+        skip.ne vf, 0
         jump __DIVMOD8_NO_SUB
         sub vd, vb
         add v0, 1
@@ -451,11 +451,36 @@ __DIVMOD8_NO_SUB:
                 # Array assignment: arr[idx] = val
                 arr_name = target["target"]["name"].upper()
                 idx_expr = target["index"]
-                self.compile_expr_into(idx_expr, "vc", ctx)
-                out.append(f"        load i, {arr_name}")
-                out.append("        add i, vc")
-                out.append(f"        load v0, {dest_reg}")
+                self.call_arg_buffers.add("__INDEX_ASSIGN_VAL")
+                out.append("        load i, __INDEX_ASSIGN_VAL")
+                if dest_reg != "v0":
+                    out.append(f"        load v0, {dest_reg}")
                 out.append("        save v0")
+                self.compile_expr_into(idx_expr, "vc", ctx)
+                out.append("        load i, __INDEX_ASSIGN_VAL")
+                out.append("        restore v0")
+                out.append("        load vd, v0")
+                if op == "=":
+                    out.append(f"        load i, {arr_name}")
+                    out.append("        add i, vc")
+                    out.append("        load v0, vd")
+                    out.append("        save v0")
+                    if dest_reg != "v0":
+                        out.append(f"        load {dest_reg}, vd")
+                else:
+                    out.append(f"        load i, {arr_name}")
+                    out.append("        add i, vc")
+                    out.append("        restore v0")
+                    if op == "+=": out.append("        add v0, vd")
+                    elif op == "-=": out.append("        sub v0, vd")
+                    elif op == "&=": out.append("        and v0, vd")
+                    elif op == "|=": out.append("        or v0, vd")
+                    elif op == "^=": out.append("        xor v0, vd")
+                    out.append(f"        load i, {arr_name}")
+                    out.append("        add i, vc")
+                    out.append("        save v0")
+                    if dest_reg != "v0":
+                        out.append(f"        load {dest_reg}, v0")
             return dest_reg
 
         if etype == "post_inc" or etype == "pre_inc":
@@ -646,14 +671,40 @@ __DIVMOD8_NO_SUB:
                 return dest_reg
 
             if op == "+":
+                left_expr = expr["left"]
+                right_expr = expr["right"]
+                if left_expr["type"] == "num" and right_expr["type"] != "num":
+                    left_expr, right_expr = right_expr, left_expr
+
+                self.compile_expr_into(left_expr, dest_reg, ctx)
+                if right_expr["type"] == "num":
+                    rv = right_expr["val"] & 0xFF
+                    if rv != 0:
+                        out.append(f"        add {dest_reg}, {rv}")
+                else:
+                    temp_reg = "ve" if dest_reg == "vb" else "vb"
+                    if dest_reg == "v0":
+                        out.append("        load ve, v0")
+                    self.compile_expr_into(right_expr, temp_reg, ctx)
+                    if dest_reg == "v0":
+                        out.append("        load v0, ve")
+                    out.append(f"        add {dest_reg}, {temp_reg}")
+                return dest_reg
+
+            if op == "-":
                 self.compile_expr_into(expr["left"], dest_reg, ctx)
                 if expr["right"]["type"] == "num":
                     rv = expr["right"]["val"] & 0xFF
                     if rv != 0:
-                        out.append(f"        add {dest_reg}, {rv}")
+                        out.append(f"        sub {dest_reg}, {rv}")
                 else:
-                    self.compile_expr_into(expr["right"], "vb", ctx)
-                    out.append(f"        add {dest_reg}, vb")
+                    temp_reg = "ve" if dest_reg == "vb" else "vb"
+                    if dest_reg == "v0":
+                        out.append("        load ve, v0")
+                    self.compile_expr_into(expr["right"], temp_reg, ctx)
+                    if dest_reg == "v0":
+                        out.append("        load v0, ve")
+                    out.append(f"        sub {dest_reg}, {temp_reg}")
                 return dest_reg
 
             if op == "&&":
@@ -680,46 +731,75 @@ __DIVMOD8_NO_SUB:
                 out.append(f"{lbl_end}:")
                 return dest_reg
 
-            # Compile left into dest_reg
+            if op in ("&", "|", "^"):
+                left_expr = expr["left"]
+                right_expr = expr["right"]
+                if left_expr["type"] == "num" and right_expr["type"] != "num":
+                    left_expr, right_expr = right_expr, left_expr
+                self.compile_expr_into(left_expr, dest_reg, ctx)
+                temp_reg = "ve" if dest_reg == "vb" else "vb"
+                if right_expr["type"] == "num":
+                    rv = right_expr["val"] & 0xFF
+                    out.append(f"        load {temp_reg}, {rv}")
+                else:
+                    if dest_reg == "v0":
+                        out.append("        load ve, v0")
+                    self.compile_expr_into(right_expr, temp_reg, ctx)
+                    if dest_reg == "v0":
+                        out.append("        load v0, ve")
+                if op == "&": out.append(f"        and {dest_reg}, {temp_reg}")
+                elif op == "|": out.append(f"        or {dest_reg}, {temp_reg}")
+                elif op == "^": out.append(f"        xor {dest_reg}, {temp_reg}")
+                return dest_reg
+
+            temp_reg = "ve" if dest_reg == "vb" else "vb"
             self.compile_expr_into(expr["left"], dest_reg, ctx)
-            # Compile right into temporary vb
-            self.compile_expr_into(expr["right"], "vb", ctx)
-            if op == "-": out.append(f"        sub {dest_reg}, vb")
-            elif op == "&": out.append(f"        and {dest_reg}, vb")
-            elif op == "|": out.append(f"        or {dest_reg}, vb")
-            elif op == "^": out.append(f"        xor {dest_reg}, vb")
-            elif op == "==":
+            if expr["right"]["type"] == "num":
+                rv = expr["right"]["val"] & 0xFF
+                out.append(f"        load {temp_reg}, {rv}")
+            else:
+                if dest_reg == "v0":
+                    out.append("        load ve, v0")
+                self.compile_expr_into(expr["right"], temp_reg, ctx)
+                if dest_reg == "v0":
+                    out.append("        load v0, ve")
+
+            if op == "==":
                 out.append(f"        load v0, 0")
-                out.append(f"        skip.ne {dest_reg}, vb")
+                out.append(f"        skip.ne {dest_reg}, {temp_reg}")
                 out.append(f"        load v0, 1")
                 if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
             elif op == "!=":
                 out.append(f"        load v0, 0")
-                out.append(f"        skip.eq {dest_reg}, vb")
+                out.append(f"        skip.eq {dest_reg}, {temp_reg}")
                 out.append(f"        load v0, 1")
                 if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
             elif op == "<":
-                out.append(f"        load ve, {dest_reg}")
-                out.append("        sub ve, vb")
+                scratch = "vc" if (dest_reg == "ve" or temp_reg == "ve") else "ve"
+                out.append(f"        load {scratch}, {dest_reg}")
+                out.append(f"        sub {scratch}, {temp_reg}")
                 out.append("        load v0, 1")
                 out.append("        skip.eq vf, 0")
                 out.append("        load v0, 0")
                 if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
             elif op == "<=":
-                out.append("        load ve, vb")
-                out.append(f"        sub ve, {dest_reg}")
+                scratch = "vc" if (dest_reg == "ve" or temp_reg == "ve") else "ve"
+                out.append(f"        load {scratch}, {temp_reg}")
+                out.append(f"        sub {scratch}, {dest_reg}")
                 out.append("        load v0, vf")
                 if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
             elif op == ">":
-                out.append("        load ve, vb")
-                out.append(f"        sub ve, {dest_reg}")
+                scratch = "vc" if (dest_reg == "ve" or temp_reg == "ve") else "ve"
+                out.append(f"        load {scratch}, {temp_reg}")
+                out.append(f"        sub {scratch}, {dest_reg}")
                 out.append("        load v0, 1")
                 out.append("        skip.eq vf, 0")
                 out.append("        load v0, 0")
                 if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
             elif op == ">=":
-                out.append(f"        load ve, {dest_reg}")
-                out.append("        sub ve, vb")
+                scratch = "vc" if (dest_reg == "ve" or temp_reg == "ve") else "ve"
+                out.append(f"        load {scratch}, {dest_reg}")
+                out.append(f"        sub {scratch}, {temp_reg}")
                 out.append("        load v0, vf")
                 if dest_reg != "v0": out.append(f"        load {dest_reg}, v0")
             return dest_reg
@@ -1018,6 +1098,11 @@ __DIVMOD8_NO_SUB:
             out.append("        drawmode va")
             return dest_reg
 
+        if func_name in ("feb_set_rotation", "feb_rotation"):
+            self.compile_call_args([args[0]], ["va"], ctx)
+            out.append("        rotate va")
+            return dest_reg
+
         if func_name == "feb_draw_pixel":
             self.compile_call_args([args[0], args[1]], ["va", "vb"], ctx)
             out.append("        pixel va")
@@ -1082,7 +1167,8 @@ __DIVMOD8_NO_SUB:
 
         if func_name in ("feb_draw_char", "feb_draw_character"):
             # feb_draw_char(x, y, ch, font)
-            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vc", "vd"], ctx)
+            # FXA1 CHAR expects: va=x, vb=y, vc=font, vd=char
+            self.compile_call_args([args[0], args[1], args[3], args[2]], ["va", "vb", "vc", "vd"], ctx)
             out.append("        char va")
             if dest_reg != "va":
                 out.append(f"        load {dest_reg}, va")

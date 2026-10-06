@@ -1,7 +1,7 @@
 # Flashiibo FEB (Flashiibo Executable Binary) Root Makefile
 # Targets the Flashiibo Gen3 FEB runtime (Beta & Experimental).
 
-GAMES := 2048 flappy_bird sokoban digital_pet
+GAMES := 2048 flappy_bird sokoban digital_pet mastermind snake falling_blocks
 DEMOS := template button_demo draw_demo
 EXAMPLES := $(GAMES) $(DEMOS)
 BUILD_DIR := build
@@ -18,24 +18,27 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  help        Display this help message (default)"
-	@echo "  all         Build all applications (games & demos) into $(BUILD_DIR)/"
-	@echo "  sim         Run FEB Simulator (e.g. make sim, make sim GAME=sokoban)"
-	@echo "  dist        Package public release games and checksums into $(DIST_DIR)/"
-	@echo "  test        Run automated verification test suite"
-	@echo "  clean       Clean build artifacts and build directory"
-	@echo "  publish     Tag commit with version ($(VERSION)) and push develop to main"
+	@echo "  help           Display this help message (default)"
+	@echo "  all            Build all applications (games & demos) into $(BUILD_DIR)/"
+	@echo "  sim            Run FEB Simulator (e.g. make sim, make sim GAME=sokoban)"
+	@echo "  dist           Package public release games and checksums into $(DIST_DIR)/"
+	@echo "  test           Run automated verification test suite"
+	@echo "  clean          Clean build artifacts and build directory"
+	@echo "  publish        Tag commit with version ($(VERSION)) and push develop to main"
 	@echo ""
 	@echo "Games (included in public release):"
-	@echo "  2048          Build 2048 puzzle game"
-	@echo "  flappy_bird   Build Flappy Bird sprite demo application"
-	@echo "  sokoban       Build 10-level Sokoban puzzle game"
-	@echo "  digital_pet   Build advanced virtual pet simulation with persistence"
+	@echo "  2048           Build 2048 puzzle game"
+	@echo "  mastermind     Build Master Mind code-breaking game"
+	@echo "  snake          Build Snake arcade game"
+	@echo "  falling_blocks Build Falling Blocks portrait arcade game"
+	@echo "  flappy_bird    Build Flappy Bird sprite demo application"
+	@echo "  sokoban        Build 10-level Sokoban puzzle game"
+	@echo "  digital_pet    Build advanced virtual pet simulation with persistence"
 	@echo ""
 	@echo "Developer Examples & Demos (kept in examples/):"
-	@echo "  template      Build starter template application"
-	@echo "  button_demo   Build 4-button hardware demo application"
-	@echo "  draw_demo     Build vector geometry & shapes demo application"
+	@echo "  template       Build starter template application"
+	@echo "  button_demo    Build 4-button hardware demo application"
+	@echo "  draw_demo      Build vector geometry & shapes demo application"
 	@echo ""
 
 all: $(EXAMPLES)

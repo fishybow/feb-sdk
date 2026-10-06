@@ -89,6 +89,28 @@ class TestFebVM(unittest.TestCase):
         self.assertEqual(self.vm.v[0xF], 1)
         self.assertFalse(self.vm.get_pixel(15, 15))  # Hollow inside
 
+    def test_rotation_opcode(self):
+        # Set high res, ROTATE V0 with V0=1 (90 deg CW portrait), draw pixel at (5, 10)
+        rom = bytearray([
+            0x00, 0xFF,        # HIGH
+            0x60, 0x01,        # LD V0, 1 (ROTATE_90)
+            0xF0, 0x9A,        # ROTATE V0
+            0x61, 5,           # LD V1, 5
+            0x62, 10,          # LD V2, 10
+            0xF1, 0x90,        # PIXEL V1
+            0xF1, 0x99,        # TESTPIXEL V1
+        ])
+        self.vm.load_rom(bytes(rom))
+        while self.vm.pc < 0x200 + len(rom) and not self.vm.exited:
+            self.vm.step()
+
+        self.assertEqual(self.vm.rotation, 1)
+        self.assertEqual(self.vm.v[0xF], 1)
+        self.assertTrue(self.vm.get_pixel(5, 10))
+        # Physically on display: x_phy = 127 - y = 127 - 10 = 117, y_phy = x = 5
+        self.vm.rotation = 0
+        self.assertTrue(self.vm.get_pixel(117, 5))
+
     def test_typography_opcodes(self):
         # Set high res, LD I to string "HI", TEXT V0 at (0, 0) font 0
         rom = bytearray([
@@ -169,7 +191,7 @@ class TestFebSimulator(unittest.TestCase):
     """Verifies Pygame-based simulator integration and headless execution."""
 
     def test_simulator_headless_runs_all_sdk_games(self):
-        games = ["2048", "button_demo", "draw_demo", "flappy_bird", "sokoban", "digital_pet", "template"]
+        games = ["2048", "button_demo", "draw_demo", "flappy_bird", "sokoban", "digital_pet", "template", "mastermind", "snake", "falling_blocks"]
         with tempfile.TemporaryDirectory() as tmpdir:
             for g in games:
                 feb_file = os.path.join(BUILD_DIR, f"{g}.feb")

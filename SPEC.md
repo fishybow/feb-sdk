@@ -162,6 +162,7 @@ Flashiibo Pro Gen3 extends the CHIP-8 / Super-CHIP instruction set with hardware
 | `FX97` | `DISC Vx` | `Vx`=X, `Vx+1`=Y, `Vx+2`=Radius | Draws a solid filled circle (disc) centered at `(Vx, Vx+1)`. |
 | `FX98` | `DRAWMODE Vx` | `Vx`=Mode (0..4) | Sets active drawing mode: `0`=XOR, `1`=SET, `2`=CLEAR, `3`=OPAQUE, `4`=INVERTED_OPAQUE. |
 | `FX99` | `TESTPIXEL Vx` | `Vx`=X, `Vx+1`=Y | Zero-RAM collision detection: reads pixel at `(Vx, Vx+1)` into register `VF` (`1` if lit, `0` if off). Framebuffer is unmodified. |
+| `FX9A` | `ROTATE Vx` | `Vx`=Rotation (0..3) | Sets display rotation transformation mode: `0`=0° (128×64 Landscape), `1`=90° CW (64×128 Portrait), `2`=180°, `3`=270° CW. All drawing operations and pixel tests are transformed. |
 
 ### 5.2 Deterministic Input Polling
 

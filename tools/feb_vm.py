@@ -105,6 +105,7 @@ class FebVM:
         self.keys = 0                   # CHIP-8 key bitmask (bits 0..15)
         self.schip_mode = False         # False = 64x32, True = 128x64
         self.draw_mode = 0              # 0=XOR, 1=SET, 2=CLEAR, 3=OPAQUE, 4=INV_OPAQUE
+        self.rotation = 0               # 0=0 deg (128x64), 1=90 deg (64x128), 2=180 deg, 3=270 deg
         self.draw_flag = True
         self.waiting_for_key = False
         self.key_reg = 0
@@ -140,6 +141,7 @@ class FebVM:
         self.keys = 0
         self.schip_mode = False
         self.draw_mode = 0
+        self.rotation = 0
         self.draw_flag = True
         self.waiting_for_key = False
         self.key_reg = 0
@@ -256,24 +258,60 @@ class FebVM:
         """Returns True if pixel at (x, y) is ON, False otherwise."""
         w = 128 if self.schip_mode else 64
         h = 64 if self.schip_mode else 32
-        if x < 0 or x >= w or y < 0 or y >= h:
-            return False
+        px, py = x, y
+
+        if self.rotation == 1:
+            if x < 0 or x >= h or y < 0 or y >= w:
+                return False
+            px = (w - 1) - y
+            py = x
+        elif self.rotation == 2:
+            if x < 0 or x >= w or y < 0 or y >= h:
+                return False
+            px = (w - 1) - x
+            py = (h - 1) - y
+        elif self.rotation == 3:
+            if x < 0 or x >= h or y < 0 or y >= w:
+                return False
+            px = y
+            py = (h - 1) - x
+        else:
+            if x < 0 or x >= w or y < 0 or y >= h:
+                return False
 
         row_bytes = 16 if self.schip_mode else 8
-        byte_idx = y * row_bytes + (x // 8)
-        bit_mask = 0x80 >> (x % 8)
+        byte_idx = py * row_bytes + (px // 8)
+        bit_mask = 0x80 >> (px % 8)
         return (self.display[byte_idx] & bit_mask) != 0
 
     def draw_point(self, x, y, col_ref=None):
-        """Plots a single pixel respecting the active draw mode."""
+        """Plots a single pixel respecting the active draw mode and rotation."""
         w = 128 if self.schip_mode else 64
         h = 64 if self.schip_mode else 32
-        if x < 0 or x >= w or y < 0 or y >= h:
-            return
+        px, py = x, y
+
+        if self.rotation == 1:
+            if x < 0 or x >= h or y < 0 or y >= w:
+                return
+            px = (w - 1) - y
+            py = x
+        elif self.rotation == 2:
+            if x < 0 or x >= w or y < 0 or y >= h:
+                return
+            px = (w - 1) - x
+            py = (h - 1) - y
+        elif self.rotation == 3:
+            if x < 0 or x >= h or y < 0 or y >= w:
+                return
+            px = y
+            py = (h - 1) - x
+        else:
+            if x < 0 or x >= w or y < 0 or y >= h:
+                return
 
         row_bytes = 16 if self.schip_mode else 8
-        byte_idx = y * row_bytes + (x // 8)
-        bit_mask = 0x80 >> (x % 8)
+        byte_idx = py * row_bytes + (px // 8)
+        bit_mask = 0x80 >> (px % 8)
         current = (self.display[byte_idx] & bit_mask) != 0
 
         if self.draw_mode == 0:  # XOR
@@ -834,6 +872,8 @@ class FebVM:
                 self.draw_mode = self.v[x] % 5
             elif kk == 0x99:  # TESTPIXEL Vx
                 self.v[0xF] = 1 if self.get_pixel(self.v[x], self.v[(x + 1) & 0xF]) else 0
+            elif kk == 0x9A:  # ROTATE Vx
+                self.rotation = self.v[x] & 0x03
 
             # Custom Flashiibo Typography Extensions (FXA0..FXA3)
             elif kk == 0xA0:  # TEXT Vx

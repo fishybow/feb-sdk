@@ -314,6 +314,10 @@ def assemble(asm_text):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0x99))
                 pc += 2
+            elif mnem in ("rotate", "rotation", "setrotation"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x9A))
+                pc += 2
             elif mnem in ("text", "drawstr"):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0xA0))

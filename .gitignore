@@ -37,3 +37,4 @@ wheels/
 .idea/
 .agents/
 .gemini/
+simulator/

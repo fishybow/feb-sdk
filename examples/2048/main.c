@@ -2,20 +2,23 @@
  * @file main.c
  * @brief 2048 Game for Flashiibo Pro Gen3 FEB Runner (.feb)
  *
- * Implements the classic 2048 tile puzzle on a 4x4 grid optimized for
- * Flashiibo's 128x64 monochrome OLED display and 4 physical buttons:
- *   - UP:      Slide Up (Key 0x2)
- *   - DOWN:    Slide Down (Key 0x8)
- *   - BACK:    Slide Left (Key 0x4)
- *   - OK:      Slide Right (Key 0x6)
- * Pressing UP + DOWN together guarantees immediate game exit back to the FEB Runner menu.
- *
- * Built with pure C using Flashiibo FEB SDK geometry lines and typography fonts.
+ * Implements the classic 2048 tile puzzle matching the built-in firmware
+ * 2048 game (games_2048_view.c) pixel-for-pixel:
+ *   - 4x4 grid of 20x14 tiles with 1px outline spacing
+ *   - Solid white tile boxes with clear (black) font_likeminecraft_te numbers
+ *   - Right sidebar: "2048" header, horizontal rule, SCORE and BEST displays
+ *   - Centered popup overlays for GAME OVER and YOU WIN!
+ *   - Controls: UP/DOWN/LEFT(BACK)/RIGHT(OK)
+ *   - UP+DOWN system exit chord back to FEB Runner menu
  */
 
 #include "../../include/feb.h"
 
 #define BOARD_SIZE    16
+
+#define STATE_PLAYING    0
+#define STATE_GAME_OVER  1
+#define STATE_WON        2
 
 /* Board state: 16 tiles (4x4)
  *   0: Empty cell
@@ -25,82 +28,107 @@
  *  ...
  *  10: Tile "1024" (displays "1K")
  *  11: Tile "2048" (displays "2K" - TARGET WIN)
+ *  12: Tile "4096" (displays "4K")
  */
 static uint8_t board[BOARD_SIZE];
 static uint8_t new_board[BOARD_SIZE];
 
-/* Persistent high score: highest tile level achieved (1..11) saved in companion .sav */
-static uint8_t best_tile = 0;
+static uint16_t score = 0;
+static uint16_t high_score = 0;
+static uint8_t state = STATE_PLAYING;
+static uint8_t won_dismissed = 0;
+
+/* Save buffer for RPL flags persistence */
+static uint8_t save_buf[2];
 
 /* -------------------------------------------------------------------------
- * Board Rendering with Geometry and Typography
+ * Board Rendering matching games_2048_view.c pixel-for-pixel
  * ------------------------------------------------------------------------- */
 
-static void draw_grid(void) {
-    /* Vertical grid lines: 5 lines bounding 4 columns of 16px */
-    feb_draw_vline(32, 0, 64);
-    feb_draw_vline(48, 0, 64);
-    feb_draw_vline(64, 0, 64);
-    feb_draw_vline(80, 0, 64);
-    feb_draw_vline(96, 0, 64);
+static void draw_tile(uint8_t cx, uint8_t cy, uint8_t val) {
+    if (val == 0) {
+        feb_draw_rect(cx, cy, 20, 14);
+        return;
+    }
 
-    /* Horizontal grid lines: 5 lines bounding 4 rows of 16px */
-    feb_draw_hline(32, 0, 65);
-    feb_draw_hline(32, 16, 65);
-    feb_draw_hline(32, 32, 65);
-    feb_draw_hline(32, 48, 65);
-    feb_draw_hline(32, 63, 65);
+    /* Filled tile: solid white background with black text */
+    feb_fill_rect(cx, cy, 20, 14);
+    feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+    if (val == 1)       feb_draw_string(cx + 8, cy + 3, "2", FEB_FONT_RETRO_8X8);
+    else if (val == 2)  feb_draw_string(cx + 8, cy + 3, "4", FEB_FONT_RETRO_8X8);
+    else if (val == 3)  feb_draw_string(cx + 8, cy + 3, "8", FEB_FONT_RETRO_8X8);
+    else if (val == 4)  feb_draw_string(cx + 6, cy + 3, "16", FEB_FONT_RETRO_8X8);
+    else if (val == 5)  feb_draw_string(cx + 6, cy + 3, "32", FEB_FONT_RETRO_8X8);
+    else if (val == 6)  feb_draw_string(cx + 6, cy + 3, "64", FEB_FONT_RETRO_8X8);
+    else if (val == 7)  feb_draw_string(cx + 4, cy + 3, "128", FEB_FONT_RETRO_8X8);
+    else if (val == 8)  feb_draw_string(cx + 4, cy + 3, "256", FEB_FONT_RETRO_8X8);
+    else if (val == 9)  feb_draw_string(cx + 4, cy + 3, "512", FEB_FONT_RETRO_8X8);
+    else if (val == 10) feb_draw_string(cx + 6, cy + 3, "1K", FEB_FONT_RETRO_8X8);
+    else if (val == 11) feb_draw_string(cx + 6, cy + 3, "2K", FEB_FONT_RETRO_8X8);
+    else                feb_draw_string(cx + 6, cy + 3, "4K", FEB_FONT_RETRO_8X8);
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
 }
 
-static void draw_tile(uint8_t x, uint8_t y, uint8_t val) {
-    if (val == 0) return;
-    if (val == 1)       feb_draw_string(x + 6, y + 5, "2", FEB_FONT_4X6);
-    else if (val == 2)  feb_draw_string(x + 6, y + 5, "4", FEB_FONT_4X6);
-    else if (val == 3)  feb_draw_string(x + 6, y + 5, "8", FEB_FONT_4X6);
-    else if (val == 4)  feb_draw_string(x + 4, y + 5, "16", FEB_FONT_4X6);
-    else if (val == 5)  feb_draw_string(x + 4, y + 5, "32", FEB_FONT_4X6);
-    else if (val == 6)  feb_draw_string(x + 4, y + 5, "64", FEB_FONT_4X6);
-    else if (val == 7)  feb_draw_string(x + 2, y + 5, "128", FEB_FONT_4X6);
-    else if (val == 8)  feb_draw_string(x + 2, y + 5, "256", FEB_FONT_4X6);
-    else if (val == 9)  feb_draw_string(x + 2, y + 5, "512", FEB_FONT_4X6);
-    else if (val == 10) feb_draw_string(x + 4, y + 5, "1K", FEB_FONT_4X6);
-    else if (val == 11) feb_draw_string(x + 4, y + 5, "2K", FEB_FONT_4X6);
-    else                feb_draw_string(x + 4, y + 5, "4K", FEB_FONT_4X6);
-}
-
-static void draw_best(void) {
-    feb_draw_string(10, 14, "HI", FEB_FONT_6X10);
-    feb_draw_hline(6, 25, 20);
-    if (best_tile > 0) {
-        draw_tile(6, 28, best_tile);
+static void draw_board(void) {
+    uint8_t cy = 2;
+    uint8_t idx = 0;
+    for (uint8_t r = 0; r < 4; r++) {
+        uint8_t cx = 1;
+        for (uint8_t c = 0; c < 4; c++) {
+            uint8_t val = board[idx];
+            idx++;
+            if (val == 0) {
+                feb_draw_rect(cx, cy, 20, 14);
+            } else {
+                draw_tile(cx, cy, val);
+            }
+            cx += 21;
+        }
+        cy += 15;
     }
 }
 
 static void draw_sidebar(void) {
-    feb_draw_string(101, 14, "2048", FEB_FONT_6X10);
-    feb_draw_hline(101, 25, 24);
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+
+    /* Header title */
+    feb_draw_string(87, 4, "2048", FEB_FONT_RETRO_8X8);
+    feb_draw_hline(86, 15, 41);
+
+    /* SCORE */
+    feb_draw_string(87, 18, "SCORE", FEB_FONT_4X6);
+    feb_draw_number(87, 26, score, FEB_FONT_RETRO_8X8);
+
+    /* BEST */
+    feb_draw_string(87, 40, "BEST", FEB_FONT_4X6);
+    feb_draw_number(87, 48, high_score, FEB_FONT_RETRO_8X8);
 }
 
-static void draw_board(void) {
-    for (uint8_t r = 0; r < 4; r++) {
-        for (uint8_t c = 0; c < 4; c++) {
-            uint8_t idx = (r << 2) + c;
-            uint8_t val = board[idx];
-            if (val > 0) {
-                uint8_t cx = 32 + (c << 4);
-                uint8_t cy = r << 4;
-                draw_tile(cx, cy, val);
-            }
-        }
+static void draw_overlays(void) {
+    if (state == STATE_GAME_OVER) {
+        feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+        feb_fill_rect(8, 14, 65, 34);
+        feb_set_draw_mode(FEB_DRAW_MODE_SET);
+        feb_draw_rect(8, 14, 65, 34);
+        feb_draw_string(11, 19, "GAME OVER", FEB_FONT_RETRO_8X8);
+        feb_draw_string(14, 34, "Press OK: New", FEB_FONT_4X6);
+    } else if (state == STATE_WON && won_dismissed == 0) {
+        feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+        feb_fill_rect(8, 14, 65, 34);
+        feb_set_draw_mode(FEB_DRAW_MODE_SET);
+        feb_draw_rect(8, 14, 65, 34);
+        feb_draw_string(15, 19, "YOU WIN!", FEB_FONT_RETRO_8X8);
+        feb_draw_string(13, 34, "Press OK: Keep", FEB_FONT_4X6);
     }
 }
 
 static void render_all(void) {
     feb_clear_screen();
-    draw_grid();
-    draw_best();
-    draw_sidebar();
     draw_board();
+    draw_sidebar();
+    if (state != STATE_PLAYING) {
+        draw_overlays();
+    }
 }
 
 /* -------------------------------------------------------------------------
@@ -128,6 +156,8 @@ static bool slide(uint8_t key) {
     }
 
     bool moved = false;
+    uint16_t score_delta = 0;
+
     for (uint8_t line = 0; line < 4; line++) {
         uint8_t write_pos = 0;
         uint8_t last_val = 0;
@@ -139,12 +169,9 @@ static bool slide(uint8_t key) {
             if (val == last_val) {
                 target_idx = get_idx(key, line, write_pos - 1);
                 new_board[target_idx] = val + 1;
+                score_delta += (1 << (val + 1));
                 last_val = 0;
                 moved = true;
-                if (val + 1 > best_tile) {
-                    best_tile = val + 1;
-                    feb_save_flags(&best_tile, 1);
-                }
             } else {
                 last_val = val;
                 target_idx = get_idx(key, line, write_pos);
@@ -157,10 +184,21 @@ static bool slide(uint8_t key) {
         }
     }
 
-    for (uint8_t pos = 0; pos < BOARD_SIZE; pos++) {
-        board[pos] = new_board[pos];
-        new_board[pos] = 0;
+    if (moved) {
+        score += score_delta;
+        if (score > high_score) {
+            high_score = score;
+            save_buf[0] = (uint8_t)(high_score & 0xFF);
+            save_buf[1] = (uint8_t)(high_score >> 8);
+            feb_save_flags(save_buf, 2);
+        }
+
+        for (uint8_t pos = 0; pos < BOARD_SIZE; pos++) {
+            board[pos] = new_board[pos];
+            new_board[pos] = 0;
+        }
     }
+
     return moved;
 }
 
@@ -198,43 +236,38 @@ static void place_random_tile(void) {
     }
 }
 
-static void new_game(void) {
+static bool check_has_won(void) {
     for (uint8_t i = 0; i < BOARD_SIZE; i++) {
-        board[i] = 0;
-        new_board[i] = 0;
+        if (board[i] >= 11) {
+            return true;
+        }
     }
+    return false;
 }
 
-/* -------------------------------------------------------------------------
- * Game Over Detection & Screen
- * ------------------------------------------------------------------------- */
-
-static bool is_game_over(void) {
+static bool check_is_game_over(void) {
     for (uint8_t r = 0; r < 4; r++) {
         for (uint8_t c = 0; c < 4; c++) {
             uint8_t idx = (r << 2) + c;
             uint8_t val = board[idx];
-            if (val == 0) {
-                return false;
-            }
-            if (c < 3 && val == board[idx + 1]) {
-                return false;
-            }
-            if (r < 3 && val == board[idx + 4]) {
-                return false;
-            }
+            if (val == 0) return false;
+            if (c < 3 && val == board[idx + 1]) return false;
+            if (r < 3 && val == board[idx + 4]) return false;
         }
     }
     return true;
 }
 
-static void draw_game_over(void) {
-    feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
-    feb_fill_rect(34, 15, 60, 34);
-    feb_set_draw_mode(FEB_DRAW_MODE_SET);
-    feb_draw_rect(34, 15, 60, 34);
-    feb_draw_string(37, 20, "GAME OVER", FEB_FONT_6X10);
-    feb_draw_string(42, 35, "OK: Restart", FEB_FONT_4X6);
+static void new_game(void) {
+    for (uint8_t i = 0; i < BOARD_SIZE; i++) {
+        board[i] = 0;
+        new_board[i] = 0;
+    }
+    score = 0;
+    state = STATE_PLAYING;
+    won_dismissed = 0;
+    place_random_tile();
+    place_random_tile();
 }
 
 /* -------------------------------------------------------------------------
@@ -246,41 +279,39 @@ int main(void) {
     feb_set_draw_mode(FEB_DRAW_MODE_SET);
 
     /* Load persistent high score from companion .sav */
-    feb_load_flags(&best_tile, 1);
-    if (best_tile > 15) {
-        best_tile = 0;
-    }
+    feb_load_flags(save_buf, 2);
+    high_score = (uint16_t)save_buf[0] | ((uint16_t)save_buf[1] << 8);
 
     new_game();
-    place_random_tile();
-    place_random_tile();
     render_all();
-
-    uint8_t game_over = 0;
 
     while (1) {
         uint8_t key = feb_wait_key();
-        if (game_over != 0) {
+
+        if (state == STATE_GAME_OVER) {
             if (key == FEB_KEY_OK) {
                 new_game();
-                place_random_tile();
-                place_random_tile();
                 render_all();
-                game_over = 0;
+            }
+        } else if (state == STATE_WON && won_dismissed == 0) {
+            if (key == FEB_KEY_OK) {
+                won_dismissed = 1;
+                state = STATE_PLAYING;
+                render_all();
             }
         } else {
             bool moved = slide(key);
             if (moved) {
                 place_random_tile();
-                render_all();
-                if (is_game_over()) {
-                    game_over = 1;
-                    draw_game_over();
+                if (won_dismissed == 0 && check_has_won()) {
+                    state = STATE_WON;
+                } else if (check_is_game_over()) {
+                    state = STATE_GAME_OVER;
                 }
+                render_all();
             }
         }
     }
 
     return 0;
 }
-
