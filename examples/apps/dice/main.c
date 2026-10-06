@@ -22,26 +22,6 @@
 #define STATE_IDLE    0
 #define STATE_ROLLING 1
 
-static const uint8_t spr_arrow_up[7] = {
-    0x10, /*    #    */
-    0x38, /*   ###   */
-    0x7C, /*  #####  */
-    0xFE, /* ####### */
-    0x38, /*   ###   */
-    0x38, /*   ###   */
-    0x38  /*   ###   */
-};
-
-static const uint8_t spr_arrow_down[7] = {
-    0x38, /*   ###   */
-    0x38, /*   ###   */
-    0x38, /*   ###   */
-    0xFE, /* ####### */
-    0x7C, /*  #####  */
-    0x38, /*   ###   */
-    0x10  /*    #    */
-};
-
 static const uint8_t spr_die_1[32] = {
     0x3F, 0xFC, 0x7F, 0xFE, 0xC0, 0x03, 0x80, 0x01,
     0x80, 0x01, 0x80, 0x01, 0x81, 0x81, 0x83, 0xC1,
@@ -108,12 +88,16 @@ static void render(void) {
     feb_clear_screen();
     feb_set_draw_mode(FEB_DRAW_MODE_SET);
 
-    /* 1. Right Control Panel (Arrow icons & count digit) */
-    feb_draw_sprite(113, 8, spr_arrow_up, 7);
-    feb_draw_number(115, 27, dice_count, FEB_FONT_6X10);
-    feb_draw_sprite(113, 49, spr_arrow_down, 7);
+    /* 1. Left Playfield Box & Right Control Panel Box */
+    feb_draw_rrect(2, 3, 105, 58);
+    feb_draw_rrect(109, 3, 17, 58);
 
-    /* 2. Left Playfield (Dice Area: x=0..105) */
+    /* 2. Right Control Panel (Arrow triangles & count digit) */
+    feb_draw_triangle(113, 14, 121, 14, 117, 8);
+    feb_draw_number(115, 27, dice_count, FEB_FONT_6X10);
+    feb_draw_triangle(113, 50, 121, 50, 117, 56);
+
+    /* 3. Left Playfield (Dice Area) */
     if (dice_count == 1) {
         draw_die(45, 24, dice_values[0]);
     } else if (dice_count == 2) {

@@ -29,26 +29,6 @@
 
 static const uint8_t SIDES[DICE_COUNT] = {4, 6, 8, 10, 12, 20, 100};
 
-static const uint8_t spr_arrow_up[7] = {
-    0x10, /*    #    */
-    0x38, /*   ###   */
-    0x7C, /*  #####  */
-    0xFE, /* ####### */
-    0x38, /*   ###   */
-    0x38, /*   ###   */
-    0x38  /*   ###   */
-};
-
-static const uint8_t spr_arrow_down[7] = {
-    0x38, /*   ###   */
-    0x38, /*   ###   */
-    0x38, /*   ###   */
-    0xFE, /* ####### */
-    0x7C, /*  #####  */
-    0x38, /*   ###   */
-    0x10  /*    #    */
-};
-
 /* Custom 16x16 Big Font for 10 Digits (0..9) */
 static const uint8_t spr_dig_0[32] = {
     0x3E, 0x00, 0x63, 0x00, 0xC1, 0x80, 0xC1, 0x80,
@@ -155,53 +135,38 @@ static void draw_big_number(uint8_t val) {
 
 static void draw_header(void) {
     if (dice_idx == 0) {
-        feb_draw_sprite(47, 4, spr_arrow_down, 7);
+        feb_draw_triangle(48, 5, 54, 5, 51, 9);
         feb_draw_string(58, 3, "D4", FEB_FONT_6X10);
-        feb_draw_sprite(74, 4, spr_arrow_up, 7);
+        feb_draw_triangle(73, 9, 79, 9, 76, 5);
     } else if (dice_idx == 1) {
-        feb_draw_sprite(47, 4, spr_arrow_down, 7);
+        feb_draw_triangle(48, 5, 54, 5, 51, 9);
         feb_draw_string(58, 3, "D6", FEB_FONT_6X10);
-        feb_draw_sprite(74, 4, spr_arrow_up, 7);
+        feb_draw_triangle(73, 9, 79, 9, 76, 5);
     } else if (dice_idx == 2) {
-        feb_draw_sprite(47, 4, spr_arrow_down, 7);
+        feb_draw_triangle(48, 5, 54, 5, 51, 9);
         feb_draw_string(58, 3, "D8", FEB_FONT_6X10);
-        feb_draw_sprite(74, 4, spr_arrow_up, 7);
+        feb_draw_triangle(73, 9, 79, 9, 76, 5);
     } else if (dice_idx == 3) {
-        feb_draw_sprite(44, 4, spr_arrow_down, 7);
+        feb_draw_triangle(45, 5, 51, 5, 48, 9);
         feb_draw_string(55, 3, "D10", FEB_FONT_6X10);
-        feb_draw_sprite(77, 4, spr_arrow_up, 7);
+        feb_draw_triangle(76, 9, 82, 9, 79, 5);
     } else if (dice_idx == 4) {
-        feb_draw_sprite(44, 4, spr_arrow_down, 7);
+        feb_draw_triangle(45, 5, 51, 5, 48, 9);
         feb_draw_string(55, 3, "D12", FEB_FONT_6X10);
-        feb_draw_sprite(77, 4, spr_arrow_up, 7);
+        feb_draw_triangle(76, 9, 82, 9, 79, 5);
     } else if (dice_idx == 5) {
-        feb_draw_sprite(44, 4, spr_arrow_down, 7);
+        feb_draw_triangle(45, 5, 51, 5, 48, 9);
         feb_draw_string(55, 3, "D20", FEB_FONT_6X10);
-        feb_draw_sprite(77, 4, spr_arrow_up, 7);
+        feb_draw_triangle(76, 9, 82, 9, 79, 5);
     } else if (dice_idx == 6) {
-        feb_draw_sprite(41, 4, spr_arrow_down, 7);
+        feb_draw_triangle(42, 5, 48, 5, 45, 9);
         feb_draw_string(52, 3, "D100", FEB_FONT_6X10);
-        feb_draw_sprite(80, 4, spr_arrow_up, 7);
+        feb_draw_triangle(79, 9, 85, 9, 82, 5);
     }
 }
 
 static void draw_rounded_box(void) {
-    feb_draw_hline(13, 14, 102);
-    feb_draw_hline(13, 59, 102);
-    feb_draw_vline(10, 17, 40);
-    feb_draw_vline(117, 17, 40);
-    feb_draw_pixel(11, 15);
-    feb_draw_pixel(12, 15);
-    feb_draw_pixel(11, 16);
-    feb_draw_pixel(116, 15);
-    feb_draw_pixel(115, 15);
-    feb_draw_pixel(116, 16);
-    feb_draw_pixel(11, 58);
-    feb_draw_pixel(12, 58);
-    feb_draw_pixel(11, 57);
-    feb_draw_pixel(116, 58);
-    feb_draw_pixel(115, 58);
-    feb_draw_pixel(116, 57);
+    feb_draw_rrect(10, 14, 108, 46);
 }
 
 static void render(void) {

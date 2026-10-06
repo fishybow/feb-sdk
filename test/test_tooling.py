@@ -446,15 +446,39 @@ class TestFebBuild(unittest.TestCase):
         c_path = find_example_c("dice")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 1401)
+        self.assertEqual(len(bytecode), 1415)
         self.assertLess(len(bytecode), 2000)
 
     def test_build_dnd_dice_c(self):
         c_path = find_example_c("dnd_dice")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 1662)
+        self.assertEqual(len(bytecode), 1610)
         self.assertLess(len(bytecode), 2000)
+
+    def test_c_compiler_geometry_primitives(self):
+        import compiler
+        with tempfile.NamedTemporaryFile("w", suffix=".c", delete=False) as f:
+            f.write("""
+            #include "../../include/feb.h"
+            int main(void) {
+                feb_draw_triangle(10, 20, 30, 40, 50, 60);
+                feb_draw_rrect(5, 5, 20, 30);
+                feb_fill_rrect(40, 40, 15, 25);
+                return 0;
+            }
+            """)
+            tmp_path = f.name
+        try:
+            asm_code = compiler.compile_c_to_asm(tmp_path)
+            self.assertIn("triangle va", asm_code)
+            self.assertIn("rrect va", asm_code)
+            self.assertIn("fillrrect va", asm_code)
+            bytecode = assemble_chip8.assemble(asm_code)
+            self.assertTrue(len(bytecode) > 0)
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
     def test_modular_compiler_equivalence(self):
         import compiler
