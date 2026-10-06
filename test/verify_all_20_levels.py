@@ -71,7 +71,7 @@ def solve_grid(grid, max_states=1000000):
 
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    c_path = os.path.join(root, "examples", "sokoban", "main.c")
+    c_path = os.path.join(root, "examples", "games", "sokoban", "main.c")
     with open(c_path) as f:
         text = f.read()
 

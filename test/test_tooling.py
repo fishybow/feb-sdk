@@ -19,6 +19,13 @@ import assemble_chip8
 import make_feb
 import feb_build
 
+def find_example_c(app):
+    for sub in ["games", "demos", "apps"]:
+        p = os.path.join(REPO_ROOT, "examples", sub, app, "main.c")
+        if os.path.exists(p):
+            return p
+    return os.path.join(REPO_ROOT, "examples", app, "main.c")
+
 class SimChip8:
     """Headless CHIP-8 / SCHIP + Flashiibo FEB virtual machine for automated testing."""
     def __init__(self, rom):
@@ -189,7 +196,7 @@ class TestAssembleChip8(unittest.TestCase):
         self.assertEqual(code, bytes([0x00, 0xE0, 0x00, 0xEE]))
 
     def test_assemble_template_demo(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "template", "main.c")
+        c_path = find_example_c("template")
         asm = feb_build.compile_c_to_asm(c_path)
         code = assemble_chip8.assemble(asm)
         self.assertGreater(len(code), 50)
@@ -336,7 +343,7 @@ class TestMakeFeb(unittest.TestCase):
 
 class TestFebBuild(unittest.TestCase):
     def test_build_2048_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "2048", "main.c")
+        c_path = find_example_c("2048")
         with tempfile.NamedTemporaryFile(suffix=".feb", delete=False) as tmp:
             tmp_path = tmp.name
 
@@ -357,62 +364,102 @@ class TestFebBuild(unittest.TestCase):
                 os.remove(tmp_path)
 
     def test_build_template_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "template", "main.c")
+        c_path = find_example_c("template")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 154)
 
     def test_build_button_demo_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "button_demo", "main.c")
+        c_path = find_example_c("button_demo")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 1192)
 
     def test_build_draw_demo_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "draw_demo", "main.c")
+        c_path = find_example_c("draw_demo")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 392)
 
     def test_build_flappy_bird_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
+        c_path = find_example_c("flappy_bird")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 1829)
 
     def test_build_sokoban_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "sokoban", "main.c")
+        c_path = find_example_c("sokoban")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 3118)
         self.assertLess(len(bytecode), 3200)
 
     def test_build_mastermind_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "mastermind", "main.c")
+        c_path = find_example_c("mastermind")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 2358)
         self.assertLess(len(bytecode), 2600)
 
     def test_build_snake_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "snake", "main.c")
+        c_path = find_example_c("snake")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 3472)
         self.assertLess(len(bytecode), 3584)
 
     def test_build_falling_blocks_c(self):
-        c_path = os.path.join(REPO_ROOT, "examples", "falling_blocks", "main.c")
+        c_path = find_example_c("falling_blocks")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
         self.assertEqual(len(bytecode), 3575)
         self.assertLess(len(bytecode), 3584)
 
+    def test_build_flashlight_c(self):
+        c_path = find_example_c("flashlight")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 36)
+        self.assertLess(len(bytecode), 200)
+
+    def test_build_sos_c(self):
+        c_path = find_example_c("sos")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 146)
+        self.assertLess(len(bytecode), 300)
+
+    def test_build_stopwatch_c(self):
+        c_path = find_example_c("stopwatch")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 935)
+        self.assertLess(len(bytecode), 1200)
+
+    def test_build_std_dice_c(self):
+        c_path = find_example_c("std_dice")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 2417)
+        self.assertLess(len(bytecode), 2600)
+
+    def test_build_dnd_dice_c(self):
+        c_path = find_example_c("dnd_dice")
+        asm_code = feb_build.compile_c_to_asm(c_path)
+        bytecode = assemble_chip8.assemble(asm_code)
+        self.assertEqual(len(bytecode), 800)
+        self.assertLess(len(bytecode), 1000)
+
     def test_modular_compiler_equivalence(self):
         import compiler
         import c_compiler
-        for app in ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban", "digital_pet", "mastermind", "snake", "falling_blocks"]:
-            c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
+        all_targets = [
+            "template", "button_demo", "draw_demo",
+            "flappy_bird", "2048", "sokoban", "digital_pet", "mastermind", "snake", "falling_blocks",
+            "flashlight", "sos", "stopwatch", "std_dice", "dnd_dice"
+        ]
+        for app in all_targets:
+            c_path = find_example_c(app)
             asm_mod = compiler.compile_c_to_asm(c_path)
             asm_facade = c_compiler.compile_c_to_asm(c_path)
             self.assertEqual(asm_mod, asm_facade, f"Compiler output mismatch on {app}")
@@ -709,7 +756,7 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_2048_pure_c_simulation_and_step_budget(self):
         """Guard: 2048 boot and turns meet step budgets and preserve tile/score state."""
-        c_path = os.path.join(REPO_ROOT, "examples", "2048", "main.c")
+        c_path = find_example_c("2048")
         asm = feb_build.compile_c_to_asm(c_path)
         rom = assemble_chip8.assemble(asm)
 
@@ -737,13 +784,17 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_all_sdk_examples_pure_c_compilation_and_packaging(self):
         """Guard: All SDK examples compile, assemble, and package into valid .feb binaries within budgets."""
-        examples = ["template", "button_demo", "draw_demo", "flappy_bird", "2048", "sokoban", "digital_pet", "mastermind", "snake", "falling_blocks"]
+        examples = [
+            "template", "button_demo", "draw_demo",
+            "flappy_bird", "2048", "sokoban", "digital_pet", "mastermind", "snake", "falling_blocks",
+            "flashlight", "sos", "stopwatch", "std_dice", "dnd_dice"
+        ]
         for app in examples:
-            c_path = os.path.join(REPO_ROOT, "examples", app, "main.c")
+            c_path = find_example_c(app)
             asm = feb_build.compile_c_to_asm(c_path)
             bytecode = assemble_chip8.assemble(asm)
 
-            budget = 3584 if app in ("digital_pet", "snake", "falling_blocks") else (3200 if app == "sokoban" else (2600 if app == "mastermind" else 2500))
+            budget = 3584 if app in ("digital_pet", "snake", "falling_blocks") else (3200 if app == "sokoban" else (2600 if app in ("mastermind", "std_dice") else 2500))
             self.assertLess(len(bytecode), budget, f"Bytecode for {app} exceeds {budget} bytes budget: {len(bytecode)}")
 
             feb_data = make_feb.create_feb(
@@ -760,6 +811,16 @@ class TestToolingGuards(unittest.TestCase):
             self.assertEqual(ver, 1)
             self.assertEqual(app_type, make_feb.FEB_TYPE_CHIP8)
             payload_size = struct.unpack_from("<I", feb_data, 88)[0]
+
+    def test_guard_apps_no_require_back_flag(self):
+        """Guard: All apps in examples/apps/ must NOT require physical BACK button (available on both Gen2 and Gen3)."""
+        apps_dir = os.path.join(REPO_ROOT, "examples", "apps")
+        for app_name in os.listdir(apps_dir):
+            makefile_path = os.path.join(apps_dir, app_name, "Makefile")
+            if os.path.exists(makefile_path):
+                with open(makefile_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                self.assertNotIn("--require-back", content, f"App {app_name} must not specify --require-back")
     def test_guard_logical_and_or_operators_and_short_circuiting(self):
         """Guard: Logical AND (&&) and OR (||) compile correctly with short-circuit semantics."""
         c_code = """
@@ -889,7 +950,7 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_flappy_bird_programmatic_exit(self):
         """Guard: Flappy Bird demonstrates programmatic exit on BACK button press both on title and in-game."""
-        c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
+        c_path = find_example_c("flappy_bird")
         asm = feb_build.compile_c_to_asm(c_path)
         bc = assemble_chip8.assemble(asm)
 
@@ -934,7 +995,7 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_flappy_bird_ceiling_gravity_no_stick(self):
         """Guard: Flappy Bird does not stick to ceiling; jump_timer decays cleanly and bird falls under gravity."""
-        c_path = os.path.join(REPO_ROOT, "examples", "flappy_bird", "main.c")
+        c_path = find_example_c("flappy_bird")
         asm = feb_build.compile_c_to_asm(c_path)
         bc = assemble_chip8.assemble(asm)
 
@@ -977,7 +1038,7 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_draw_demo_execution(self):
         """Guard: draw_demo executes vector drawing and responds to UP+DOWN chord exit."""
-        c_path = os.path.join(REPO_ROOT, "examples", "draw_demo", "main.c")
+        c_path = find_example_c("draw_demo")
         asm = feb_build.compile_c_to_asm(c_path)
         bc = assemble_chip8.assemble(asm)
         sim = SimChip8(bc)
@@ -999,7 +1060,7 @@ class TestToolingGuards(unittest.TestCase):
 
     def test_guard_sokoban_level_solving_and_immovable_blocks(self):
         """Guard: Sokoban loads levels, enforces immovable block obstacles, solves levels, and handles restart/exit chords."""
-        c_path = os.path.join(REPO_ROOT, "examples", "sokoban", "main.c")
+        c_path = find_example_c("sokoban")
         asm = feb_build.compile_c_to_asm(c_path)
         bc = assemble_chip8.assemble(asm)
         self.assertLess(len(bc), 3200, f"Sokoban bytecode exceeds 3200 bytes budget: {len(bc)}")

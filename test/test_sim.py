@@ -202,9 +202,13 @@ class TestFebSimulator(unittest.TestCase):
     """Verifies Pygame-based simulator integration and headless execution."""
 
     def test_simulator_headless_runs_all_sdk_games(self):
-        games = ["2048", "button_demo", "draw_demo", "flappy_bird", "sokoban", "digital_pet", "template", "mastermind", "snake", "falling_blocks"]
+        items = [
+            "2048", "button_demo", "draw_demo", "flappy_bird", "sokoban", "digital_pet",
+            "template", "mastermind", "snake", "falling_blocks",
+            "flashlight", "sos", "stopwatch", "std_dice", "dnd_dice"
+        ]
         with tempfile.TemporaryDirectory() as tmpdir:
-            for g in games:
+            for g in items:
                 feb_file = os.path.join(BUILD_DIR, f"{g}.feb")
                 if not os.path.exists(feb_file):
                     continue
