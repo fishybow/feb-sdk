@@ -112,6 +112,9 @@ Flashiibo firmware >= 26.10.4 includes hardware-accelerated drawing primitives e
 - `void feb_draw_vline(uint8_t x, uint8_t y, uint8_t len);`: Draws fast vertical line.
 - `void feb_draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws unfilled outline rectangle.
 - `void feb_fill_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws filled solid rectangle.
+- `void feb_draw_rrect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws unfilled outline rounded rectangle with 1px corner radius.
+- `void feb_fill_rrect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws filled solid rounded rectangle with 1px corner radius.
+- `void feb_draw_triangle(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);`: Draws unfilled outline triangle connecting 3 vertices.
 - `void feb_draw_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws unfilled circle outline centered at `(x, y)`.
 - `void feb_fill_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws filled solid circle centered at `(x, y)`.
 

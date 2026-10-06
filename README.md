@@ -175,6 +175,9 @@ Include the C SDK header in your application:
 - `void feb_draw_vline(uint8_t x, uint8_t y, uint8_t len);`: Draws fast vertical line.
 - `void feb_draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws outline rectangle.
 - `void feb_fill_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws filled solid rectangle.
+- `void feb_draw_rrect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws outline rounded rectangle with 1px corner radius.
+- `void feb_fill_rrect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);`: Draws filled solid rounded rectangle with 1px corner radius.
+- `void feb_draw_triangle(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);`: Draws outline triangle connecting 3 vertices.
 - `void feb_draw_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws outline circle.
 - `void feb_fill_circle(uint8_t x, uint8_t y, uint8_t r);`: Draws filled solid circle.
 - `bool feb_test_pixel(uint8_t x, uint8_t y);`: Non-destructive zero-RAM collision test against framebuffer pixels.
