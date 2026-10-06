@@ -6,7 +6,7 @@
 > APIs, header specifications, and runtime behavior are under active development and **breaking changes might happen without warning**.
 
 **Document Version:** 1.0 (Beta)  
-**Target Platform:** Flashiibo Pro Gen3 (Firmware >= 26.10.4)  
+**Target Platform:** Flashiibo Pro Gen3 (Firmware >= 26.10.6)  
 **Host Applet:** FEB Runner  
 **Runtime Environment:** Flashiibo Executable Binary (`.feb`) Virtual Machine  
 
@@ -14,13 +14,13 @@
 
 ## 1. Introduction & Overview
 
-Flashiibo Pro Gen3 features a sandboxed virtual runtime for user-installable applications and games called **FEB Runner** (`.feb`, requires firmware >= 26.10.4). With the Flashiibo C SDK, developers can write applications in idiomatic C, compile them into self-contained `.feb` binary packages, and distribute them without modifying or reflashing the MCU firmware.
+Flashiibo Pro Gen3 features a sandboxed virtual runtime for user-installable applications and games called **FEB Runner** (`.feb`, requires firmware >= 26.10.6). With the Flashiibo C SDK, developers can write applications in idiomatic C, compile them into self-contained `.feb` binary packages, and distribute them without modifying or reflashing the MCU firmware.
 
 ### 1.1 Key Technical Specifications
 
 | Resource | Specification | Notes |
 |---|---|---|
-| **Target Platform** | Flashiibo Pro Gen3 | Requires firmware >= 26.10.4 (Sandboxed VM) |
+| **Target Platform** | Flashiibo Pro Gen3 | Requires firmware >= 26.10.6 (Sandboxed VM) |
 | **Language** | C (C99 / C11) / Assembly | Standard types from `<stdint.h>` and `<stdbool.h>` |
 | **Display** | 128×64 (default Super-CHIP) or 64×32 (legacy) Monochrome OLED | 1-bit per pixel (XOR sprite drawing) |
 | **Frame Rate** | 60 Hz | Hardware timer-driven execution cycle |
@@ -104,7 +104,7 @@ Renders a built-in single-digit hexadecimal glyph (`0x0` through `0xF`, 5 pixels
 
 ### 3.2 Fast Geometric Primitives
 
-Flashiibo firmware >= 26.10.4 includes hardware-accelerated drawing primitives executed directly by the VM:
+Flashiibo firmware >= 26.10.6 includes hardware-accelerated drawing primitives executed directly by the VM:
 
 - `void feb_draw_pixel(uint8_t x, uint8_t y);`: Plots single pixel using active draw mode.
 - `void feb_draw_line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);`: Draws line between endpoints using Bresenham's algorithm.
@@ -314,7 +314,7 @@ clean:
 ## 6. Deploying to Flashiibo Pro Gen3 Hardware
 
 > [!NOTE]
-> Running `.feb` applications requires **Flashiibo Pro Gen3** firmware **>= 26.10.4**.
+> Running `.feb` applications requires **Flashiibo Pro Gen3** firmware **>= 26.10.6**.
 
 1. Connect your Flashiibo Pro Gen3 to your computer or phone via USB or Web Bluetooth.
 2. In the Flashiibo companion application or Web Tool, open the File Manager.

@@ -150,7 +150,7 @@ jobs:
           body: |
             ## Flashiibo FEB Games
 
-            Pre-compiled standalone `.feb` game executables for **Flashiibo Pro Gen3** devices running **FEB Runner** (requires firmware >= 26.10.4).
+            Pre-compiled standalone `.feb` game executables for **Flashiibo Pro Gen3** devices running **FEB Runner** (requires firmware >= 26.10.6).
 
             ### 🎮 Included Games
             - **`2048.feb`**: Classic 2048 puzzle game rendered at 128×64 with direct line sliding, animated tiles, and high-score tracking.

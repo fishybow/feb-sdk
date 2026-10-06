@@ -6,7 +6,7 @@
 > Header fields, flags, and runtime contracts may change without warning as the Flashiibo ecosystem evolves.
 
 **Specification Version:** 1.0 (Beta)  
-**Target Platform:** Flashiibo Pro Gen3 (Firmware >= 26.10.4)  
+**Target Platform:** Flashiibo Pro Gen3 (Firmware >= 26.10.6)  
 **Host Applet:** FEB Runner  
 **File Extension:** `.feb`  
 
@@ -14,7 +14,7 @@
 
 ## 1. Overview
 
-The `.feb` (Flashiibo Executable Binary) format is a lightweight, sandboxed executable container designed for running user-created games and mini-applications inside the **FEB Runner** app on Flashiibo Pro Gen3 hardware (requires firmware >= 26.10.4) without reflashing MCU firmware.
+The `.feb` (Flashiibo Executable Binary) format is a lightweight, sandboxed executable container designed for running user-created games and mini-applications inside the **FEB Runner** app on Flashiibo Pro Gen3 hardware (requires firmware >= 26.10.6) without reflashing MCU firmware.
 
 ---
 
@@ -146,7 +146,7 @@ Flashiibo Gen3 features four physical buttons:
 
 ## 5. Custom Virtual Machine Extension Opcodes
 
-Flashiibo Pro Gen3 extends the CHIP-8 / Super-CHIP instruction set with hardware-accelerated opcodes under unused `0xFX..` opcode space (firmware >= 26.10.4):
+Flashiibo Pro Gen3 extends the CHIP-8 / Super-CHIP instruction set with hardware-accelerated opcodes under unused `0xFX..` opcode space (firmware >= 26.10.6):
 
 ### 5.1 Geometry & Drawing Modes
 

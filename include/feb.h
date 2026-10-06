@@ -10,7 +10,7 @@
  * Breaking changes might happen without warning.
  *
  * Flashiibo Pro Gen3 executes .feb binaries inside a sandboxed virtual machine
- * via the FEB Runner applet (requires firmware >= 26.10.4). It provides a 60 Hz
+ * via the FEB Runner applet (requires firmware >= 26.10.6). It provides a 60 Hz
  * timer tick, 128x64 default (or 64x32 legacy) display buffer, and deterministic
  * 4-button physical navigation mapping.
  */

@@ -6,7 +6,7 @@ High-fidelity Python implementation of the Flashiibo FEB runtime matching
 the firmware-52832 architecture (chip8.c and feb_runner_view.c):
   - 128x64 default Super-CHIP (or 64x32 legacy) display modes
   - Standard CHIP-8 + Super-CHIP instructions (00Cn, 00FB, 00FC, 00FD, 00FE, 00FF)
-  - Custom Flashiibo VM extensions (firmware >= 26.10.4):
+  - Custom Flashiibo VM extensions (firmware >= 26.10.6):
       * FX90-FX99: Hardware vector geometry (pixel, line, hline, vline, rect, fillrect, circle, disc, drawmode, testpixel)
       * FXA0-FXA3: Typography & string/number formatting (u8g2 fonts 4x6, 6x10, 8x8)
       * FXB0: Instantaneous 4-button hardware polling bitmask (getkeys)

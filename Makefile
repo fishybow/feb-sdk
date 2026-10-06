@@ -104,7 +104,7 @@ dist: all
 	done
 	@echo "Flashiibo Executable Binary (.feb) Applications & Games - Release $(VERSION)" > $(DIST_DIR)/README.txt
 	@echo "============================================================" >> $(DIST_DIR)/README.txt
-	@echo "Compatible with Flashiibo Pro Gen3 and Gen2 (firmware >= 26.10.4)." >> $(DIST_DIR)/README.txt
+	@echo "Compatible with Flashiibo Pro Gen3 and Gen2 (firmware >= 26.10.6)." >> $(DIST_DIR)/README.txt
 	@echo "" >> $(DIST_DIR)/README.txt
 	@echo "Installation:" >> $(DIST_DIR)/README.txt
 	@echo "1. Connect your Flashiibo Pro via USB or Web Bluetooth using Flashiibo Pro Tools." >> $(DIST_DIR)/README.txt

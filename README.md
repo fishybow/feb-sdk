@@ -19,7 +19,7 @@ Applications run inside a sandboxed virtual runtime with a 60 Hz frame cycle, mo
 
 | Property | Value | Notes |
 |---|---|---|
-| **Target Platform** | Flashiibo Pro Gen3 | Requires firmware >= 26.10.4 (Sandboxed VM) |
+| **Target Platform** | Flashiibo Pro Gen3 | Requires firmware >= 26.10.6 (Sandboxed VM) |
 | **Display** | 128×64 (default) or 64×32 (legacy) Monochrome OLED | 1-bit per pixel (XOR sprite drawing) |
 | **Frame Rate** | 60 Hz | Hardware timer-driven execution tick |
 | **Address Space** | 4,096 Bytes | Deterministic memory layout |
@@ -227,7 +227,7 @@ Include the C SDK header in your application:
 ## Deploying to Hardware
 
 > [!NOTE]
-> Running `.feb` applications requires **Flashiibo Pro Gen3** firmware **>= 26.10.4**.
+> Running `.feb` applications requires **Flashiibo Pro Gen3** firmware **>= 26.10.6**.
 
 1. Connect your Flashiibo Pro Gen3 to your computer or smartphone (USB or Web Bluetooth).
 2. Open the Flashiibo companion application or Web Tool.
