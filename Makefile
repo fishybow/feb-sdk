@@ -21,7 +21,7 @@ help:
 	@echo "Available targets:"
 	@echo "  help           Display this help message (default)"
 	@echo "  all            Build all applications (games, demos, apps) into $(BUILD_DIR)/"
-	@echo "  sim            Run FEB Simulator (e.g. make sim, make sim GAME=sokoban)"
+	@echo "  sim            Run FEB Simulator (e.g. make sim APP=stopwatch, make sim GAME=sokoban)"
 	@echo "  dist           Package public release games/apps and checksums into $(DIST_DIR)/"
 	@echo "  test           Run automated verification test suite"
 	@echo "  clean          Clean build artifacts and build directory"
@@ -52,40 +52,54 @@ help:
 all: $(EXAMPLES)
 	@echo ""
 	@echo "=== All FEB Applications Built Successfully ==="
-	@ls -la $(BUILD_DIR)
+	@echo "--- Games: ---" && ls -la $(BUILD_DIR)/games/
+	@echo "--- Demos: ---" && ls -la $(BUILD_DIR)/demos/
+	@echo "--- Apps: ---" && ls -la $(BUILD_DIR)/apps/
 
 $(GAMES):
-	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/games
 	@echo "--- Building game $@ ---"
 	@$(MAKE) -C examples/games/$@
-	@cp examples/games/$@/$@.feb $(BUILD_DIR)/
-	@echo "Installed $(BUILD_DIR)/$@.feb"
+	@cp examples/games/$@/$@.feb $(BUILD_DIR)/games/
+	@echo "Installed $(BUILD_DIR)/games/$@.feb"
 
 $(DEMOS):
-	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/demos
 	@echo "--- Building demo $@ ---"
 	@$(MAKE) -C examples/demos/$@
-	@cp examples/demos/$@/$@.feb $(BUILD_DIR)/
-	@echo "Installed $(BUILD_DIR)/$@.feb"
+	@cp examples/demos/$@/$@.feb $(BUILD_DIR)/demos/
+	@echo "Installed $(BUILD_DIR)/demos/$@.feb"
 
 $(APPS):
-	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/apps
 	@echo "--- Building app $@ ---"
 	@$(MAKE) -C examples/apps/$@
-	@cp examples/apps/$@/$@.feb $(BUILD_DIR)/
-	@echo "Installed $(BUILD_DIR)/$@.feb"
+	@cp examples/apps/$@/$@.feb $(BUILD_DIR)/apps/
+	@echo "Installed $(BUILD_DIR)/apps/$@.feb"
+
+SIM_TARGET ?= $(if $(APP),$(APP),$(if $(GAME),$(GAME),$(if $(DEMO),$(DEMO),$(TARGET))))
+SIM_FEB = $(if $(SIM_TARGET),$(if $(wildcard $(SIM_TARGET)),$(SIM_TARGET),$(firstword $(wildcard $(BUILD_DIR)/*/$(SIM_TARGET).feb $(BUILD_DIR)/$(SIM_TARGET).feb $(SIM_TARGET).feb))),)
 
 sim run:
-	@python3 tools/feb_sim.py $(if $(GAME),$(if $(wildcard $(GAME)),$(GAME),$(BUILD_DIR)/$(GAME).feb),) $(SIM_ARGS)
-
-DIST_TITLES := $(GAMES) $(APPS)
+	@python3 tools/feb_sim.py $(SIM_FEB) $(SIM_ARGS)
 
 dist: all
-	@mkdir -p $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)/games $(DIST_DIR)/apps $(DIST_DIR)/demos
 	@rm -rf $(DIST_DIR)/*
-	@for item in $(DIST_TITLES); do \
-		if [ -f $(BUILD_DIR)/$$item.feb ]; then \
-			cp $(BUILD_DIR)/$$item.feb $(DIST_DIR)/; \
+	@mkdir -p $(DIST_DIR)/games $(DIST_DIR)/apps $(DIST_DIR)/demos
+	@for game in $(GAMES); do \
+		if [ -f $(BUILD_DIR)/games/$$game.feb ]; then \
+			cp $(BUILD_DIR)/games/$$game.feb $(DIST_DIR)/games/; \
+		fi; \
+	done
+	@for app in $(APPS); do \
+		if [ -f $(BUILD_DIR)/apps/$$app.feb ]; then \
+			cp $(BUILD_DIR)/apps/$$app.feb $(DIST_DIR)/apps/; \
+		fi; \
+	done
+	@for demo in $(DEMOS); do \
+		if [ -f $(BUILD_DIR)/demos/$$demo.feb ]; then \
+			cp $(BUILD_DIR)/demos/$$demo.feb $(DIST_DIR)/demos/; \
 		fi; \
 	done
 	@echo "Flashiibo Executable Binary (.feb) Applications & Games - Release $(VERSION)" > $(DIST_DIR)/README.txt
@@ -100,15 +114,24 @@ dist: all
 	@echo "Emergency Exit Chord:" >> $(DIST_DIR)/README.txt
 	@echo "Press UP and DOWN simultaneously to return to the FEB Runner menu." >> $(DIST_DIR)/README.txt
 	@echo "" >> $(DIST_DIR)/README.txt
-	@echo "Included applications & games:" >> $(DIST_DIR)/README.txt
-	@for item in $(DIST_TITLES); do \
-		if [ -f $(BUILD_DIR)/$$item.feb ]; then \
-			echo "  - $$item.feb" >> $(DIST_DIR)/README.txt; \
-		fi; \
+	@echo "Games (games/):" >> $(DIST_DIR)/README.txt
+	@for game in $(GAMES); do \
+		echo "  - games/$$game.feb" >> $(DIST_DIR)/README.txt; \
+	done
+	@echo "" >> $(DIST_DIR)/README.txt
+	@echo "Apps (apps/):" >> $(DIST_DIR)/README.txt
+	@for app in $(APPS); do \
+		echo "  - apps/$$app.feb" >> $(DIST_DIR)/README.txt; \
+	done
+	@echo "" >> $(DIST_DIR)/README.txt
+	@echo "Developer Demos (demos/):" >> $(DIST_DIR)/README.txt
+	@for demo in $(DEMOS); do \
+		echo "  - demos/$$demo.feb" >> $(DIST_DIR)/README.txt; \
 	done
 	@rm -f $(DIST_DIR)/$(PACKAGE_ZIP) $(DIST_DIR)/sha256sums.txt
-	@cd $(DIST_DIR) && zip -9 $(PACKAGE_ZIP) *.feb README.txt
-	@cd $(DIST_DIR) && sha256sum *.feb $(PACKAGE_ZIP) > sha256sums.txt
+	@cd $(DIST_DIR) && zip -9 -r $(PACKAGE_ZIP) games apps demos README.txt
+	@cd $(DIST_DIR) && find games apps demos -name "*.feb" | sort | xargs sha256sum > sha256sums.txt
+	@cd $(DIST_DIR) && sha256sum $(PACKAGE_ZIP) >> sha256sums.txt
 	@echo ""
 	@echo "=== Distribution Artifacts Packaged in $(DIST_DIR)/ (v$(VERSION)) ==="
 	@ls -la $(DIST_DIR)

@@ -18,8 +18,8 @@ $(TARGET): main.c $(BUILD_TOOL) ../../../include/feb.h
 	$(PYTHON) $(BUILD_TOOL) main.c -o $(TARGET) --title "$(APP_TITLE)" --author "$(APP_AUTHOR)" --ver "$(APP_VER)"
 
 install: $(TARGET)
-	@mkdir -p ../../../build
-	@cp $(TARGET) ../../../build/
-
+	@mkdir -p ../../../build/apps
+	cp $(TARGET) ../../../build/apps/$(TARGET)
+	@echo "[FEB] Copied $(TARGET) to ../../../build/apps/$(TARGET)"
 clean:
 	rm -f $(TARGET)

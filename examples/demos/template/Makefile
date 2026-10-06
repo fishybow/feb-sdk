@@ -22,9 +22,8 @@ from_asm: main.asm $(BUILD_TOOL)
 	$(PYTHON) $(BUILD_TOOL) main.asm -o $(TARGET) --title "$(APP_TITLE)" --author "$(APP_AUTHOR)" --ver "$(APP_VER)"
 
 install: $(TARGET)
-	@mkdir -p ../../../build
-	cp $(TARGET) ../../../build/$(TARGET)
-	@echo "[FEB] Copied $(TARGET) to ../../../build/$(TARGET)"
-
+	@mkdir -p ../../../build/demos
+	cp $(TARGET) ../../../build/demos/$(TARGET)
+	@echo "[FEB] Copied $(TARGET) to ../../../build/demos/$(TARGET)"
 clean:
 	rm -f $(TARGET)

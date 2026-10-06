@@ -198,6 +198,14 @@ class TestFebVM(unittest.TestCase):
             self.assertEqual(vm2.rpl_flags[1], 99)
 
 
+def find_built_feb(name):
+    for sub in ["games", "demos", "apps", ""]:
+        p = os.path.join(BUILD_DIR, sub, f"{name}.feb") if sub else os.path.join(BUILD_DIR, f"{name}.feb")
+        if os.path.exists(p):
+            return p
+    return None
+
+
 class TestFebSimulator(unittest.TestCase):
     """Verifies Pygame-based simulator integration and headless execution."""
 
@@ -209,8 +217,8 @@ class TestFebSimulator(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             for g in items:
-                feb_file = os.path.join(BUILD_DIR, f"{g}.feb")
-                if not os.path.exists(feb_file):
+                feb_file = find_built_feb(g)
+                if not feb_file or not os.path.exists(feb_file):
                     continue
                 shot_file = os.path.join(tmpdir, f"{g}.png")
                 sim = feb_sim.FebSimulator(
@@ -225,8 +233,8 @@ class TestFebSimulator(unittest.TestCase):
                 self.assertGreater(os.path.getsize(shot_file), 100)
 
     def test_digital_pet_simulation_and_persistence(self):
-        pet_feb = os.path.join(BUILD_DIR, "digital_pet.feb")
-        if not os.path.exists(pet_feb):
+        pet_feb = find_built_feb("digital_pet")
+        if not pet_feb or not os.path.exists(pet_feb):
             return
         with tempfile.TemporaryDirectory() as tmpdir:
             dest_feb = os.path.join(tmpdir, "digital_pet.feb")
