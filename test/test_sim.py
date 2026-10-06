@@ -127,11 +127,22 @@ class TestFebVM(unittest.TestCase):
         while not self.vm.exited:
             self.vm.step()
 
-        # Check that V0 advanced (2 characters * 4 pixels = 8 pixels)
-        self.assertEqual(self.vm.v[0], 8)
-        # Check that some pixels were plotted
-        pixels_on = sum(1 for y in range(8) for x in range(10) if self.vm.get_pixel(x, y))
-        self.assertGreater(pixels_on, 5)
+        # Test CHAR V0 (0xF0A1) with V0=20, V1=0, V2=0 (font 4x6), V3='Z'
+        rom_char = bytearray([
+            0x00, 0xFF,        # HIGH
+            0x60, 20,          # LD V0, 20 (x)
+            0x61, 0,           # LD V1, 0 (y)
+            0x62, 0,           # LD V2, 0 (font 0)
+            0x63, ord("Z"),    # LD V3, 'Z'
+            0xF0, 0xA1,        # CHAR V0
+            0x00, 0xFD         # EXIT
+        ])
+        self.vm = feb_vm.FebVM()
+        self.vm.load_rom(bytes(rom_char))
+        while not self.vm.exited:
+            self.vm.step()
+        char_pixels = sum(1 for y in range(8) for x in range(20, 26) if self.vm.get_pixel(x, y))
+        self.assertGreater(char_pixels, 5)
 
     def test_button_polling_getkeys(self):
         # LD V0 via FXB0

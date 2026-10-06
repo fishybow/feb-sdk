@@ -157,7 +157,7 @@ static void render_rows(void) {
         if (r < guess_count) {
             /* Past submitted digits */
             for (uint8_t d = 0; d < 4; d++) {
-                feb_draw_char(DIGIT_X[d], row_y, '0' + history_digits[(r << 2) + d], FEB_FONT_RETRO_8X8);
+                feb_draw_char(DIGIT_X[d], row_y - 1, '0' + history_digits[(r << 2) + d], FEB_FONT_RETRO_8X8);
             }
 
             /* Clues: Perfect (solid disc), Number-only (half-filled), Incorrect (circle) */
@@ -183,10 +183,10 @@ static void render_rows(void) {
                     feb_set_draw_mode(FEB_DRAW_MODE_SET);
                     feb_fill_rect(DIGIT_X[d] - 1, row_y - 1, 8, 9);
                     feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
-                    feb_draw_char(DIGIT_X[d], row_y, '0' + current_digits[d], FEB_FONT_RETRO_8X8);
+                    feb_draw_char(DIGIT_X[d], row_y - 1, '0' + current_digits[d], FEB_FONT_RETRO_8X8);
                     feb_set_draw_mode(FEB_DRAW_MODE_SET);
                 } else {
-                    feb_draw_char(DIGIT_X[d], row_y, '0' + current_digits[d], FEB_FONT_RETRO_8X8);
+                    feb_draw_char(DIGIT_X[d], row_y - 1, '0' + current_digits[d], FEB_FONT_RETRO_8X8);
                 }
             }
         } else {

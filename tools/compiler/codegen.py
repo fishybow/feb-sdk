@@ -559,12 +559,30 @@ __DIVMOD8_NO_SUB:
                         pass
                     elif rv == 2:
                         out.append(f"        add {dest_reg}, {dest_reg}")
+                    elif rv == 3:
+                        scratch = "va" if dest_reg == "v0" else "v0"
+                        out.append(f"        load {scratch}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {scratch}")
                     elif rv == 4:
                         out.append(f"        add {dest_reg}, {dest_reg}")
                         out.append(f"        add {dest_reg}, {dest_reg}")
+                    elif rv == 5:
+                        scratch = "va" if dest_reg == "v0" else "v0"
+                        out.append(f"        load {scratch}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {scratch}")
                     elif rv == 8:
                         out.append(f"        add {dest_reg}, {dest_reg}")
                         out.append(f"        add {dest_reg}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {dest_reg}")
+                    elif rv == 10:
+                        scratch = "va" if dest_reg == "v0" else "v0"
+                        out.append(f"        load {scratch}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {dest_reg}")
+                        out.append(f"        add {dest_reg}, {scratch}")
                         out.append(f"        add {dest_reg}, {dest_reg}")
                     elif rv == 16:
                         out.append(f"        add {dest_reg}, {dest_reg}")
@@ -966,7 +984,7 @@ __DIVMOD8_NO_SUB:
     # Function Calls & Flashiibo SDK Mappings
     # =========================================================================
 
-    def is_simple_arg(self, arg, target_reg, ctx):
+    def is_simple_arg(self, arg, target_reg, target_regs, i, ctx):
         if not arg:
             return True
         t = arg.get("type")
@@ -976,9 +994,13 @@ __DIVMOD8_NO_SUB:
             name = arg["name"]
             loc = ctx.get("locals", {}).get(name)
             if loc:
-                if target_reg not in ctx.get("locals", {}).values():
-                    return True
                 if loc == target_reg:
+                    return True
+                # If loc was already targeted by an earlier argument (target_regs[:i]),
+                # it was clobbered during pass 2 loading!
+                if loc in target_regs[:i]:
+                    return False
+                if target_reg not in ctx.get("locals", {}).values():
                     return True
         return False
 
@@ -990,7 +1012,7 @@ __DIVMOD8_NO_SUB:
 
         saved_indices = set()
         for i, (arg, target_reg) in enumerate(zip(args, target_regs)):
-            if not self.is_simple_arg(arg, target_reg, ctx):
+            if not self.is_simple_arg(arg, target_reg, target_regs, i, ctx):
                 saved_indices.add(i)
                 self.compile_expr_into(arg, "v0", eval_ctx)
                 buf_name = f"__ARG_{depth}_{i}"

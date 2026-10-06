@@ -221,7 +221,11 @@ static void clear_lines(void) {
         else if (cleared == 3) pts = 500;
         else if (cleared >= 4) pts = 800;
 
-        score += pts * level;
+        uint8_t lvl = level;
+        while (lvl > 0) {
+            score += pts;
+            lvl--;
+        }
         if (score > high_score) {
             high_score = score;
             rpl_buf[0] = (high_score >> 8) & 0xFF;
@@ -230,7 +234,12 @@ static void clear_lines(void) {
         }
 
         lines += cleared;
-        level = (lines / 10) + 1;
+        level = 1;
+        uint16_t thresh = 10;
+        while (lines >= thresh) {
+            level++;
+            thresh += 10;
+        }
         if (level >= 10) {
             drop_frames = 8;
         } else {
@@ -328,14 +337,14 @@ static void draw_header(void) {
     }
 
     /* Well header separator */
-    feb_draw_line(0, 23, 63, 23);
+    feb_draw_hline(0, 23, 64);
 }
 
 static void draw_board_and_well(void) {
     /* Well borders */
-    feb_draw_line(6, 24, 6, 125);
-    feb_draw_line(57, 24, 57, 125);
-    feb_draw_line(6, 125, 57, 125);
+    feb_draw_vline(6, 24, 102);
+    feb_draw_vline(57, 24, 102);
+    feb_draw_hline(6, 125, 52);
 
     /* Placed blocks */
     for (uint8_t r = 0; r < BOARD_HEIGHT; r++) {
