@@ -453,7 +453,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = find_example_c("dnd_dice")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 1610)
+        self.assertEqual(len(bytecode), 1512)
         self.assertLess(len(bytecode), 2000)
 
     def test_c_compiler_geometry_primitives(self):

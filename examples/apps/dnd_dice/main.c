@@ -134,35 +134,38 @@ static void draw_big_number(uint8_t val) {
 }
 
 static void draw_header(void) {
-    if (dice_idx == 0) {
-        feb_draw_triangle(48, 5, 54, 5, 51, 9);
-        feb_draw_string(58, 3, "D4", FEB_FONT_6X10);
-        feb_draw_triangle(73, 9, 79, 9, 76, 5);
-    } else if (dice_idx == 1) {
-        feb_draw_triangle(48, 5, 54, 5, 51, 9);
-        feb_draw_string(58, 3, "D6", FEB_FONT_6X10);
-        feb_draw_triangle(73, 9, 79, 9, 76, 5);
-    } else if (dice_idx == 2) {
-        feb_draw_triangle(48, 5, 54, 5, 51, 9);
-        feb_draw_string(58, 3, "D8", FEB_FONT_6X10);
-        feb_draw_triangle(73, 9, 79, 9, 76, 5);
-    } else if (dice_idx == 3) {
-        feb_draw_triangle(45, 5, 51, 5, 48, 9);
-        feb_draw_string(55, 3, "D10", FEB_FONT_6X10);
-        feb_draw_triangle(76, 9, 82, 9, 79, 5);
-    } else if (dice_idx == 4) {
-        feb_draw_triangle(45, 5, 51, 5, 48, 9);
-        feb_draw_string(55, 3, "D12", FEB_FONT_6X10);
-        feb_draw_triangle(76, 9, 82, 9, 79, 5);
-    } else if (dice_idx == 5) {
-        feb_draw_triangle(45, 5, 51, 5, 48, 9);
-        feb_draw_string(55, 3, "D20", FEB_FONT_6X10);
-        feb_draw_triangle(76, 9, 82, 9, 79, 5);
+    uint8_t lx = 47;
+    uint8_t rx = 80;
+    uint8_t tx = 55;
+
+    if (dice_idx <= 2) {
+        lx = 50;
+        rx = 77;
+        tx = 58;
     } else if (dice_idx == 6) {
-        feb_draw_triangle(42, 5, 48, 5, 45, 9);
-        feb_draw_string(52, 3, "D100", FEB_FONT_6X10);
-        feb_draw_triangle(79, 9, 85, 9, 82, 5);
+        lx = 44;
+        rx = 83;
+        tx = 52;
     }
+
+    uint8_t lx1 = lx - 3;
+    uint8_t lx2 = lx + 3;
+    uint8_t rx1 = rx - 3;
+    uint8_t rx2 = rx + 3;
+
+    /* Left: DOWN triangle (exact 45-degree slope, perfectly symmetric) */
+    feb_draw_triangle(lx1, 5, lx2, 5, lx, 8);
+
+    /* Right: UP triangle (exact 45-degree slope, perfectly symmetric) */
+    feb_draw_triangle(rx, 5, rx1, 8, rx2, 8);
+
+    if (dice_idx == 0) feb_draw_string(tx, 3, "D4", FEB_FONT_6X10);
+    else if (dice_idx == 1) feb_draw_string(tx, 3, "D6", FEB_FONT_6X10);
+    else if (dice_idx == 2) feb_draw_string(tx, 3, "D8", FEB_FONT_6X10);
+    else if (dice_idx == 3) feb_draw_string(tx, 3, "D10", FEB_FONT_6X10);
+    else if (dice_idx == 4) feb_draw_string(tx, 3, "D12", FEB_FONT_6X10);
+    else if (dice_idx == 5) feb_draw_string(tx, 3, "D20", FEB_FONT_6X10);
+    else if (dice_idx == 6) feb_draw_string(tx, 3, "D100", FEB_FONT_6X10);
 }
 
 static void draw_rounded_box(void) {
