@@ -15,7 +15,7 @@ TARGET = 2048.feb
 all: $(TARGET)
 
 $(TARGET): main.c $(BUILD_TOOL) ../../include/feb.h
-	$(PYTHON) $(BUILD_TOOL) main.c -o $(TARGET) --title "$(APP_TITLE)" --author "$(APP_AUTHOR)" --ver "$(APP_VER)"
+	$(PYTHON) $(BUILD_TOOL) main.c -o $(TARGET) --title "$(APP_TITLE)" --author "$(APP_AUTHOR)" --ver "$(APP_VER)" --require-back
 
 install: $(TARGET)
 	@mkdir -p ../../build

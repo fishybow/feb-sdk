@@ -57,6 +57,13 @@ extern "C" {
 #define FEB_BTN_OK        FEB_BTN_RIGHT
 
 /* -------------------------------------------------------------------------
+ * FEB Header Runtime Flags
+ * -------------------------------------------------------------------------
+ */
+#define FEB_FLAG_NONE                 0x0000
+#define FEB_FLAG_REQUIRE_BACK_BUTTON  0x0001 /* Requires physical BACK button (4-button layout) */
+
+/* -------------------------------------------------------------------------
  * Display Dimensions
  * -------------------------------------------------------------------------
  * Default display resolution for FEB applications is 128x64 (Super-CHIP mode).

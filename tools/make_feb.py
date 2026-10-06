@@ -20,6 +20,7 @@ FEB_VERSION = 1
 FEB_TYPE_CHIP8 = 0
 
 FEB_FLAG_NONE = 0x0000
+FEB_FLAG_REQUIRE_BACK_BUTTON = 0x0001
 
 # Sidecar Save Specification (.sav)
 FEB_SAVE_MAGIC = 0x56415346 # 'FSAV' (little-endian ASCII)
@@ -55,13 +56,12 @@ ICON_CHIP8_16x16 = bytes([
     0xbd, 0xbd, 0x81, 0x81, 0x7e, 0x7e, 0x00, 0x00
 ])
 
-def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b"", icon=None):
+def create_feb(app_type, title, author="Flashiibo", version="1.0.0", payload=b"", icon=None, flags=FEB_FLAG_NONE):
     if icon is None or len(icon) != 32:
         icon = ICON_CHIP8_16x16
 
     magic = FEB_MAGIC
     format_version = FEB_VERSION
-    flags = FEB_FLAG_NONE
 
     title_bytes = title.encode('utf-8')[:23].ljust(24, b'\x00')
     author_bytes = author.encode('utf-8')[:15].ljust(16, b'\x00')
@@ -135,10 +135,18 @@ def main():
     parser.add_argument("--ver", default="1.0.0", help="Version string")
     parser.add_argument("--payload", default=None, help="Path to binary payload (e.g. .ch8 bytecode)")
     parser.add_argument("--icon", default=None, help="Path to 16x16 1-bit icon bitmap (32 bytes)")
+    parser.add_argument("--require-back", action="store_true", help="Requires physical BACK button (e.g. 4-button hardware)")
+    parser.add_argument("--flags", type=lambda x: int(x, 0), default=None, help="Explicit header flags uint16")
 
     args = parser.parse_args()
 
     app_type = FEB_TYPE_CHIP8
+
+    flags = FEB_FLAG_NONE
+    if args.flags is not None:
+        flags = args.flags
+    if args.require_back:
+        flags |= FEB_FLAG_REQUIRE_BACK_BUTTON
 
     payload_bytes = b""
     if args.payload and os.path.exists(args.payload):
@@ -156,7 +164,8 @@ def main():
         author=args.author,
         version=args.ver,
         payload=payload_bytes,
-        icon=icon_bytes
+        icon=icon_bytes,
+        flags=flags
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)

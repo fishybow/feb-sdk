@@ -306,6 +306,19 @@ class TestMakeFeb(unittest.TestCase):
         self.assertEqual(payload_size, len(payload))
         self.assertEqual(crc32, 0)
 
+    def test_header_require_back_button_flag(self):
+        payload = b"\x12\x00"
+        feb_data = make_feb.create_feb(
+            app_type=make_feb.FEB_TYPE_CHIP8,
+            title="Back Required",
+            payload=payload,
+            flags=make_feb.FEB_FLAG_REQUIRE_BACK_BUTTON
+        )
+        magic, ver, app_type, flags = struct.unpack_from("<IBBH", feb_data, 0)
+        self.assertEqual(magic, make_feb.FEB_MAGIC)
+        self.assertEqual(flags, make_feb.FEB_FLAG_REQUIRE_BACK_BUTTON)
+        self.assertTrue(flags & 0x0001)
+
     def test_create_save_container(self):
         save_data = make_feb.create_save(
             high_score=2048,

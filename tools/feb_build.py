@@ -53,6 +53,8 @@ def main():
     parser.add_argument("--title", required=True, help="Display title (max 23 chars)")
     parser.add_argument("--author", default="Flashiibo", help="Author string")
     parser.add_argument("--ver", default="1.0.0", help="Version string")
+    parser.add_argument("--require-back", action="store_true", help="Requires physical BACK button (e.g. 4-button hardware)")
+    parser.add_argument("--flags", type=lambda x: int(x, 0), default=None, help="Explicit header flags uint16")
     args = parser.parse_args()
 
     input_path = args.input
@@ -79,12 +81,19 @@ def main():
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
 
+    flags = make_feb.FEB_FLAG_NONE
+    if args.flags is not None:
+        flags = args.flags
+    if args.require_back:
+        flags |= make_feb.FEB_FLAG_REQUIRE_BACK_BUTTON
+
     feb_bytes = make_feb.create_feb(
         app_type=make_feb.FEB_TYPE_CHIP8,
         title=args.title,
         author=args.author,
         version=args.ver,
-        payload=bytecode
+        payload=bytecode,
+        flags=flags
     )
 
     with open(output_path, "wb") as f:
