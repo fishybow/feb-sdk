@@ -915,7 +915,7 @@ class FebVM:
                     btn_mask |= FEB_BTN_RIGHT
                 self.v[x] = btn_mask
 
-    def step_frame(self, max_steps=1000):
+    def step_frame(self, max_steps=10000):
         """
         Executes one 60 Hz frame matching feb_runner_view.c timer handler.
         Ticks timers, decrements key hold frames, and executes CPU step budget.

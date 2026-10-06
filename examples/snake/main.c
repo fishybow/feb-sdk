@@ -160,13 +160,33 @@ static void draw_food(void) {
     feb_fill_rect(fx, fy + 1, 4, 2);
 }
 
+static void draw_head(uint8_t x, uint8_t y, uint8_t d) {
+    uint8_t hx = 2 + (x << 2);
+    uint8_t hy = 2 + (y << 2);
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+    feb_fill_rect(hx + 1, hy, 2, 4);
+    feb_fill_rect(hx, hy + 1, 4, 2);
+    feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+    if (d == DIR_RIGHT) {
+        feb_draw_pixel(hx + 2, hy + 1);
+        feb_draw_pixel(hx + 2, hy + 2);
+    } else if (d == DIR_LEFT) {
+        feb_draw_pixel(hx + 1, hy + 1);
+        feb_draw_pixel(hx + 1, hy + 2);
+    } else if (d == DIR_UP) {
+        feb_draw_pixel(hx + 1, hy + 1);
+        feb_draw_pixel(hx + 2, hy + 1);
+    } else if (d == DIR_DOWN) {
+        feb_draw_pixel(hx + 1, hy + 2);
+        feb_draw_pixel(hx + 2, hy + 2);
+    }
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+}
+
 static void draw_snake_body(void) {
     /* Head */
     if (length > 0) {
-        uint8_t hx = 2 + (body_x[0] << 2);
-        uint8_t hy = 2 + (body_y[0] << 2);
-        feb_fill_rect(hx + 1, hy, 2, 4);
-        feb_fill_rect(hx, hy + 1, 4, 2);
+        draw_head(body_x[0], body_y[0], dir);
     }
 
     /* Body segments */
@@ -187,6 +207,7 @@ static void draw_snake_tail(void) {
         uint8_t px = body_x[prev];
         uint8_t ly = body_y[last];
         uint8_t py = body_y[prev];
+        feb_set_draw_mode(FEB_DRAW_MODE_SET);
 
         if (lx < px) {
             /* Pointing left */
@@ -210,47 +231,25 @@ static void draw_snake_tail(void) {
     }
 }
 
-static void draw_snake_seps(void) {
+static void draw_separator(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
+    uint8_t sx = 2 + (x0 << 2);
+    uint8_t sy = 2 + (y0 << 2);
     feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
-    for (uint8_t i = 0; i + 1 < length; i++) {
-        uint8_t x0 = body_x[i];
-        uint8_t x1 = body_x[i + 1];
-        uint8_t y0 = body_y[i];
-        uint8_t y1 = body_y[i + 1];
-        uint8_t sx = 2 + (x0 << 2);
-        uint8_t sy = 2 + (y0 << 2);
-
-        if (x0 > x1) {
-            feb_draw_vline(sx, sy, 4);
-        } else if (x0 < x1) {
-            feb_draw_vline(sx + 3, sy, 4);
-        } else if (y0 > y1) {
-            feb_draw_hline(sx, sy, 4);
-        } else if (y0 < y1) {
-            feb_draw_hline(sx, sy + 3, 4);
-        }
+    if (x0 > x1) {
+        feb_draw_vline(sx, sy, 4);
+    } else if (x0 < x1) {
+        feb_draw_vline(sx + 3, sy, 4);
+    } else if (y0 > y1) {
+        feb_draw_hline(sx, sy, 4);
+    } else if (y0 < y1) {
+        feb_draw_hline(sx, sy + 3, 4);
     }
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
 }
 
-static void draw_snake_eyes(void) {
-    if (length > 0) {
-        uint8_t hx = 2 + (body_x[0] << 2);
-        uint8_t hy = 2 + (body_y[0] << 2);
-        feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
-        if (dir == DIR_RIGHT) {
-            feb_draw_pixel(hx + 2, hy + 1);
-            feb_draw_pixel(hx + 2, hy + 2);
-        } else if (dir == DIR_LEFT) {
-            feb_draw_pixel(hx + 1, hy + 1);
-            feb_draw_pixel(hx + 1, hy + 2);
-        } else if (dir == DIR_UP) {
-            feb_draw_pixel(hx + 1, hy + 1);
-            feb_draw_pixel(hx + 2, hy + 1);
-        } else if (dir == DIR_DOWN) {
-            feb_draw_pixel(hx + 1, hy + 2);
-            feb_draw_pixel(hx + 2, hy + 2);
-        }
-        feb_set_draw_mode(FEB_DRAW_MODE_SET);
+static void draw_snake_seps(void) {
+    for (uint8_t i = 0; i + 1 < length; i++) {
+        draw_separator(body_x[i], body_y[i], body_x[i + 1], body_y[i + 1]);
     }
 }
 
@@ -284,7 +283,6 @@ static void render_world(void) {
     draw_snake_body();
     draw_snake_tail();
     draw_snake_seps();
-    draw_snake_eyes();
 
     /* 4. Overlays */
     draw_overlays();
@@ -343,6 +341,10 @@ static void step_snake(void) {
             speed_frames--;
         }
         spawn_food();
+    } else {
+        /* Erase old tail block before shifting */
+        feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+        feb_fill_rect(2 + (body_x[length - 1] << 2), 2 + (body_y[length - 1] << 2), 4, 4);
     }
 
     /* Shift body segments */
@@ -353,6 +355,24 @@ static void step_snake(void) {
     body_x[0] = nx;
     body_y[0] = ny;
     length = new_len;
+
+    /* If tail moved, redraw the new tail tip block */
+    if (!ate) {
+        draw_snake_tail();
+    }
+
+    /* Convert old head (now at body[1]) into filled body block + separator */
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+    feb_fill_rect(2 + (hx << 2), 2 + (hy << 2), 4, 4);
+    draw_separator(hx, hy, nx, ny);
+
+    /* Draw new head at nx, ny */
+    draw_head(nx, ny, dir);
+
+    /* If food was eaten, draw new food */
+    if (ate) {
+        draw_food();
+    }
 }
 
 /* -------------------------------------------------------------------------
@@ -402,7 +422,6 @@ int main(void) {
             }
 
             step_snake();
-            render_world();
 
             if (state == STATE_GAMEOVER) {
                 if (score > high_score) {

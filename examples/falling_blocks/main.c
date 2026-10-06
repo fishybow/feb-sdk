@@ -135,7 +135,7 @@ static bool collides(int8_t px, int8_t py, uint8_t type, uint8_t rot) {
         if (bx < 0 || bx >= BOARD_WIDTH) return true;
         if (by >= BOARD_HEIGHT) return true;
         if (by >= 0) {
-            if (board[(by << 3) + (by << 1) + bx] != 0) return true;
+            if (board[by * 10 + bx] != 0) return true;
         }
     }
     return false;
@@ -179,7 +179,7 @@ static void reset_game(void) {
 
 static void shift_row_down(int8_t from_row) {
     for (int8_t row = from_row; row > 0; row--) {
-        uint8_t dst = (row << 3) + (row << 1);
+        uint8_t dst = row * 10;
         uint8_t src = dst - 10;
         for (uint8_t col = 0; col < BOARD_WIDTH; col++) {
             board[dst + col] = board[src + col];
@@ -196,7 +196,7 @@ static void clear_lines(void) {
 
     while (r < BOARD_HEIGHT) {
         bool full = true;
-        uint8_t row_start = (r << 3) + (r << 1);
+        uint8_t row_start = r * 10;
         for (uint8_t c = 0; c < BOARD_WIDTH; c++) {
             if (board[row_start + c] == 0) {
                 full = false;
@@ -255,7 +255,7 @@ static void lock_piece(void) {
         int8_t bx = cur_x + (coord & 3);
         int8_t by = cur_y + (coord >> 2);
         if (by >= 0 && by < BOARD_HEIGHT && bx >= 0 && bx < BOARD_WIDTH) {
-            board[(by << 3) + (by << 1) + bx] = 1;
+            board[by * 10 + bx] = 1;
         }
     }
 
@@ -263,30 +263,54 @@ static void lock_piece(void) {
     if (state == STATE_PLAYING) {
         spawn_piece();
     }
+    render_all();
 }
 
 /* -------------------------------------------------------------------------
- * Piece Movement & Actions
+ * Piece Movement & Actions (with differential drawing)
  * ------------------------------------------------------------------------- */
 
-static bool move_horizontal(int8_t dir) {
+static uint8_t get_drop_y(void) {
+    uint8_t dy = cur_y;
+    while (!collides(cur_x, dy + 1, cur_type, cur_rot)) {
+        dy++;
+    }
+    return dy;
+}
+
+static void draw_pieces(void) {
+    if (state != STATE_PLAYING) return;
+    uint8_t gy = get_drop_y();
+    if (gy > cur_y) {
+        draw_tetromino(cur_x, gy, 1);
+    }
+    draw_tetromino(cur_x, cur_y, 0);
+}
+
+static void erase_pieces(void) {
+    if (state != STATE_PLAYING) return;
+    feb_set_draw_mode(FEB_DRAW_MODE_CLEAR);
+    draw_pieces();
+    feb_set_draw_mode(FEB_DRAW_MODE_SET);
+}
+
+static bool try_move(int8_t dx, int8_t dy, uint8_t rot) {
     if (state != STATE_PLAYING) return false;
-    if (!collides(cur_x + dir, cur_y, cur_type, cur_rot)) {
-        cur_x += dir;
+    if (!collides(cur_x + dx, cur_y + dy, cur_type, rot)) {
+        erase_pieces();
+        cur_x += dx;
+        cur_y += dy;
+        cur_rot = rot;
+        draw_pieces();
         return true;
     }
     return false;
 }
 
 static bool rotate_piece(void) {
-    if (state != STATE_PLAYING) return false;
     uint8_t new_rot = (cur_rot + 1) & 3;
-
     for (uint8_t k = 0; k < 5; k++) {
-        int8_t tx = cur_x + KICK_X[k];
-        if (!collides(tx, cur_y, cur_type, new_rot)) {
-            cur_x = tx;
-            cur_rot = new_rot;
+        if (try_move(KICK_X[k], 0, new_rot)) {
             return true;
         }
     }
@@ -295,18 +319,16 @@ static bool rotate_piece(void) {
 
 static void hard_drop(void) {
     if (state != STATE_PLAYING) return;
-    while (!collides(cur_x, cur_y + 1, cur_type, cur_rot)) {
-        cur_y++;
-        score++;
-    }
+    erase_pieces();
+    uint8_t target_y = get_drop_y();
+    score += (target_y - cur_y);
+    cur_y = target_y;
     lock_piece();
 }
 
 static void step_down(void) {
     if (state != STATE_PLAYING) return;
-    if (!collides(cur_x, cur_y + 1, cur_type, cur_rot)) {
-        cur_y++;
-    } else {
+    if (!try_move(0, 1, cur_rot)) {
         lock_piece();
     }
 }
@@ -348,7 +370,7 @@ static void draw_board_and_well(void) {
 
     /* Placed blocks */
     for (uint8_t r = 0; r < BOARD_HEIGHT; r++) {
-        uint8_t row_idx = (r << 3) + (r << 1);
+        uint8_t row_idx = r * 10;
         uint8_t by = 25 + r * 5;
         for (uint8_t c = 0; c < BOARD_WIDTH; c++) {
             if (board[row_idx + c] != 0) {
@@ -372,22 +394,6 @@ static void draw_tetromino(int8_t px, int8_t py, uint8_t hollow) {
             }
         }
     }
-}
-
-static void draw_pieces(void) {
-    if (state != STATE_PLAYING) return;
-
-    /* Ghost piece */
-    int8_t gy = cur_y;
-    while (!collides(cur_x, gy + 1, cur_type, cur_rot)) {
-        gy++;
-    }
-    if (gy > cur_y) {
-        draw_tetromino(cur_x, gy, 1);
-    }
-
-    /* Falling active piece */
-    draw_tetromino(cur_x, cur_y, 0);
 }
 
 static void draw_gameover_modal(void) {
@@ -448,29 +454,21 @@ int main(void) {
             uint8_t just_pressed = buttons & ~prev_buttons;
             prev_buttons = buttons;
 
-            bool redraw = false;
-
             if (just_pressed & FEB_BTN_UP) {
-                redraw = move_horizontal(-1);
+                try_move(-1, 0, cur_rot);
             } else if (just_pressed & FEB_BTN_DOWN) {
-                redraw = move_horizontal(1);
+                try_move(1, 0, cur_rot);
             } else if (just_pressed & FEB_BTN_RIGHT) {
-                redraw = rotate_piece();
+                rotate_piece();
             } else if (just_pressed & FEB_BTN_LEFT) {
                 hard_drop();
                 tick_counter = 0;
-                redraw = true;
             }
 
             tick_counter++;
             if (tick_counter >= drop_frames) {
                 tick_counter = 0;
                 step_down();
-                redraw = true;
-            }
-
-            if (redraw) {
-                render_all();
             }
 
             feb_delay_frames(1);

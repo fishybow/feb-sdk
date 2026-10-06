@@ -92,7 +92,7 @@ for b in range(256):
 class FebSimulator:
     """Pygame-based Flashiibo FEB desktop simulator."""
 
-    def __init__(self, feb_path, scale=DEFAULT_SCALE, theme="oled", headless=False, ips=1000):
+    def __init__(self, feb_path, scale=DEFAULT_SCALE, theme="oled", headless=False, ips=10000):
         self.feb_path = feb_path
         self.scale = max(1, int(scale))
         self.theme_idx = THEME_KEYS.index(theme) if theme in THEME_KEYS else 0
@@ -466,7 +466,7 @@ def main():
     parser.add_argument("file", nargs="?", default=None, help="Path to .feb or .ch8 ROM binary")
     parser.add_argument("--scale", type=int, default=DEFAULT_SCALE, help=f"Integer window scale factor (default: {DEFAULT_SCALE}x)")
     parser.add_argument("--theme", choices=THEME_KEYS, default="oled", help="OLED color theme (oled, white, amber, green)")
-    parser.add_argument("--ips", type=int, default=1000, help="Instructions per frame budget (default: 1000)")
+    parser.add_argument("--ips", type=int, default=10000, help="Instructions per frame budget (default: 10000)")
     parser.add_argument("--headless", action="store_true", help="Run in headless mode without window")
     parser.add_argument("--frames", type=int, default=None, help="Exit automatically after N frames")
     parser.add_argument("--screenshot", type=str, default=None, help="Save screenshot PNG to given path on exit")

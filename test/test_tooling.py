@@ -385,14 +385,14 @@ class TestFebBuild(unittest.TestCase):
         c_path = os.path.join(REPO_ROOT, "examples", "snake", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 3142)
+        self.assertEqual(len(bytecode), 3429)
         self.assertLess(len(bytecode), 3584)
 
     def test_build_falling_blocks_c(self):
         c_path = os.path.join(REPO_ROOT, "examples", "falling_blocks", "main.c")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 3579)
+        self.assertEqual(len(bytecode), 3577)
         self.assertLess(len(bytecode), 3584)
 
     def test_modular_compiler_equivalence(self):
