@@ -7,7 +7,7 @@ APPS := stopwatch flashlight sos dice dnd_dice
 EXAMPLES := $(GAMES) $(DEMOS) $(APPS)
 BUILD_DIR := build
 DIST_DIR := dist
-PACKAGE_ZIP := flashiibo-feb-games.zip
+PACKAGE_ZIP := all-flashiibo-febs.zip
 VERSION ?= $(shell date +'%y.%m.%d')
 
 .DEFAULT_GOAL := help

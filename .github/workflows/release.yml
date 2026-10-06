@@ -69,14 +69,14 @@ jobs:
           test -f dist/demos/template.feb || { echo "Missing demos/template.feb"; exit 1; }
           test -f dist/demos/button_demo.feb || { echo "Missing demos/button_demo.feb"; exit 1; }
           test -f dist/demos/draw_demo.feb || { echo "Missing demos/draw_demo.feb"; exit 1; }
-          test -f dist/flashiibo-feb-games.zip || { echo "Missing flashiibo-feb-games.zip"; exit 1; }
+          test -f dist/all-flashiibo-febs.zip || { echo "Missing all-flashiibo-febs.zip"; exit 1; }
           test -f dist/sha256sums.txt || { echo "Missing sha256sums.txt"; exit 1; }
           echo "All game, app, and demo artifacts present and verified."
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: flashiibo-feb-games
+          name: all-flashiibo-febs
           path: dist/
           if-no-files-found: error
           retention-days: 14
@@ -99,7 +99,7 @@ jobs:
       - name: Download built artifacts
         uses: actions/download-artifact@v4
         with:
-          name: flashiibo-feb-games
+          name: all-flashiibo-febs
           path: dist/
 
       - name: Determine Release Metadata
@@ -158,7 +158,7 @@ jobs:
             dist/games/*.feb
             dist/apps/*.feb
             dist/demos/*.feb
-            dist/flashiibo-feb-games.zip
+            dist/all-flashiibo-febs.zip
             dist/sha256sums.txt
           body: |
             ## Flashiibo FEB Games & Applications
@@ -187,7 +187,7 @@ jobs:
             - **`draw_demo.feb`**: Vector geometry rendering primitives (rectangles, rounded rectangles, triangles, circles, lines).
 
             ### 📦 Distribution Archives
-            - **`flashiibo-feb-games.zip`**: Complete bundle archive containing all game, app, and demo `.feb` binaries and instructions organized by category (`games/`, `apps/`, `demos/`).
+            - **`all-flashiibo-febs.zip`**: Complete bundle archive containing all game, app, and demo `.feb` binaries and instructions organized by category (`games/`, `apps/`, `demos/`).
             - **`sha256sums.txt`**: SHA-256 verification checksums for all release binaries.
 
             ---
