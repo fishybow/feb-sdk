@@ -145,6 +145,20 @@ jobs:
           git tag -f "${{ steps.meta.outputs.tag_name }}" "${{ github.sha }}"
           git push -f origin "${{ steps.meta.outputs.tag_name }}" || echo "Tag push skipped or already up to date"
 
+      - name: Clean obsolete release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ steps.meta.outputs.tag_name }}" &>/dev/null; then
+            echo "Checking existing release assets for ${{ steps.meta.outputs.tag_name }}..."
+            for asset in $(gh release view "${{ steps.meta.outputs.tag_name }}" --json assets --jq '.assets[].name'); do
+              if ! find dist -name "$asset" | grep -q .; then
+                echo "Deleting obsolete asset from GitHub release: $asset"
+                gh release delete-asset "${{ steps.meta.outputs.tag_name }}" "$asset" --yes || true
+              fi
+            done
+          fi
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
