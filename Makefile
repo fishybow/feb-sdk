@@ -3,7 +3,7 @@
 
 GAMES := 2048 flappy_bird sokoban digital_pet mastermind snake falling_blocks
 DEMOS := template button_demo draw_demo
-APPS := stopwatch flashlight sos std_dice dnd_dice
+APPS := stopwatch flashlight sos dice dnd_dice
 EXAMPLES := $(GAMES) $(DEMOS) $(APPS)
 BUILD_DIR := build
 DIST_DIR := dist
@@ -45,7 +45,7 @@ help:
 	@echo "  stopwatch      Build precision digital stopwatch"
 	@echo "  flashlight     Build screen flashlight utility"
 	@echo "  sos            Build Morse code SOS emergency beacon"
-	@echo "  std_dice       Build standard 6-sided dice roller"
+	@echo "  dice           Build standard 6-sided dice roller"
 	@echo "  dnd_dice       Build D&D polyhedral dice roller"
 	@echo ""
 

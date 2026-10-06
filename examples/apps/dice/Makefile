@@ -4,11 +4,11 @@
 PYTHON ?= python3
 BUILD_TOOL = ../../../tools/feb_build.py
 
-APP_TITLE = Standard Dice
+APP_TITLE = Dice
 APP_AUTHOR = Flashiibo
 APP_VER = 1.0.0
 
-TARGET = std_dice.feb
+TARGET = dice.feb
 
 .PHONY: all clean install
 

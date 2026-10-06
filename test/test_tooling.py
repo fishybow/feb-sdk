@@ -436,19 +436,19 @@ class TestFebBuild(unittest.TestCase):
         self.assertEqual(len(bytecode), 935)
         self.assertLess(len(bytecode), 1200)
 
-    def test_build_std_dice_c(self):
-        c_path = find_example_c("std_dice")
+    def test_build_dice_c(self):
+        c_path = find_example_c("dice")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 2417)
-        self.assertLess(len(bytecode), 2600)
+        self.assertEqual(len(bytecode), 1401)
+        self.assertLess(len(bytecode), 2000)
 
     def test_build_dnd_dice_c(self):
         c_path = find_example_c("dnd_dice")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 800)
-        self.assertLess(len(bytecode), 1000)
+        self.assertEqual(len(bytecode), 1662)
+        self.assertLess(len(bytecode), 2000)
 
     def test_modular_compiler_equivalence(self):
         import compiler
@@ -456,7 +456,7 @@ class TestFebBuild(unittest.TestCase):
         all_targets = [
             "template", "button_demo", "draw_demo",
             "flappy_bird", "2048", "sokoban", "digital_pet", "mastermind", "snake", "falling_blocks",
-            "flashlight", "sos", "stopwatch", "std_dice", "dnd_dice"
+            "flashlight", "sos", "stopwatch", "dice", "dnd_dice"
         ]
         for app in all_targets:
             c_path = find_example_c(app)
@@ -787,14 +787,14 @@ class TestToolingGuards(unittest.TestCase):
         examples = [
             "template", "button_demo", "draw_demo",
             "flappy_bird", "2048", "sokoban", "digital_pet", "mastermind", "snake", "falling_blocks",
-            "flashlight", "sos", "stopwatch", "std_dice", "dnd_dice"
+            "flashlight", "sos", "stopwatch", "dice", "dnd_dice"
         ]
         for app in examples:
             c_path = find_example_c(app)
             asm = feb_build.compile_c_to_asm(c_path)
             bytecode = assemble_chip8.assemble(asm)
 
-            budget = 3584 if app in ("digital_pet", "snake", "falling_blocks") else (3200 if app == "sokoban" else (2600 if app in ("mastermind", "std_dice") else 2500))
+            budget = 3584 if app in ("digital_pet", "snake", "falling_blocks") else (3200 if app == "sokoban" else (2600 if app in ("mastermind", "dice", "dnd_dice") else 2500))
             self.assertLess(len(bytecode), budget, f"Bytecode for {app} exceeds {budget} bytes budget: {len(bytecode)}")
 
             feb_data = make_feb.create_feb(

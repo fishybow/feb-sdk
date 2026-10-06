@@ -213,7 +213,7 @@ class TestFebSimulator(unittest.TestCase):
         items = [
             "2048", "button_demo", "draw_demo", "flappy_bird", "sokoban", "digital_pet",
             "template", "mastermind", "snake", "falling_blocks",
-            "flashlight", "sos", "stopwatch", "std_dice", "dnd_dice"
+            "flashlight", "sos", "stopwatch", "dice", "dnd_dice"
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             for g in items:
