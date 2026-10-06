@@ -439,7 +439,7 @@ class TestFebBuild(unittest.TestCase):
         c_path = find_example_c("stopwatch")
         asm_code = feb_build.compile_c_to_asm(c_path)
         bytecode = assemble_chip8.assemble(asm_code)
-        self.assertEqual(len(bytecode), 935)
+        self.assertEqual(len(bytecode), 959)
         self.assertLess(len(bytecode), 1200)
 
     def test_build_dice_c(self):

@@ -65,9 +65,11 @@ static void render(void) {
         feb_draw_string(46, 42, "PAUSED", FEB_FONT_6X10);
     }
 
-    /* 4. Bottom Area: Button Hints */
-    feb_draw_string(4, 56, "^ LAP", FEB_FONT_4X6);
-    feb_draw_string(88, 56, "RESET v", FEB_FONT_4X6);
+    /* 4. Bottom Area: Button Hints (UP triangle for LAP, DOWN triangle for RESET) */
+    feb_draw_triangle(8, 57, 4, 61, 12, 61);
+    feb_draw_string(16, 56, "LAP", FEB_FONT_4X6);
+    feb_draw_string(93, 56, "RESET", FEB_FONT_4X6);
+    feb_draw_triangle(115, 57, 123, 57, 119, 61);
 }
 
 int main(void) {
