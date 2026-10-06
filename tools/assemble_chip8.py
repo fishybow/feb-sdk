@@ -318,6 +318,18 @@ def assemble(asm_text):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0x9A))
                 pc += 2
+            elif mnem in ("triangle", "tri", "drawtriangle"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x9B))
+                pc += 2
+            elif mnem in ("rrect", "roundrect", "drawrrect"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x9C))
+                pc += 2
+            elif mnem in ("fillrrect", "frrect", "fillroundrect"):
+                x = parse_reg(args[0])
+                binary.extend(((0xF0 | x), 0x9D))
+                pc += 2
             elif mnem in ("text", "drawstr"):
                 x = parse_reg(args[0])
                 binary.extend(((0xF0 | x), 0xA0))

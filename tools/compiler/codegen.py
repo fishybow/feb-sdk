@@ -1155,6 +1155,21 @@ __DIVMOD8_NO_SUB:
             out.append("        fillrect va")
             return dest_reg
 
+        if func_name in ("feb_draw_triangle", "feb_triangle"):
+            self.compile_call_args([args[0], args[1], args[2], args[3], args[4], args[5]], ["va", "vb", "vc", "vd", "ve", "vf"], ctx)
+            out.append("        triangle va")
+            return dest_reg
+
+        if func_name in ("feb_draw_rrect", "feb_draw_round_rect", "feb_draw_rounded_rect"):
+            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vc", "vd"], ctx)
+            out.append("        rrect va")
+            return dest_reg
+
+        if func_name in ("feb_fill_rrect", "feb_fill_round_rect", "feb_fill_rounded_rect"):
+            self.compile_call_args([args[0], args[1], args[2], args[3]], ["va", "vb", "vc", "vd"], ctx)
+            out.append("        fillrrect va")
+            return dest_reg
+
         if func_name == "feb_draw_circle":
             self.compile_call_args([args[0], args[1], args[2]], ["va", "vb", "vc"], ctx)
             out.append("        circle va")

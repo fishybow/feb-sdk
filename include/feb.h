@@ -236,6 +236,38 @@ void feb_draw_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 void feb_fill_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 
 /**
+ * @brief Draws an unfilled outline triangle connecting 3 vertices using Bresenham's algorithm.
+ *
+ * @param x0 First vertex horizontal coordinate
+ * @param y0 First vertex vertical coordinate
+ * @param x1 Second vertex horizontal coordinate
+ * @param y1 Second vertex vertical coordinate
+ * @param x2 Third vertex horizontal coordinate
+ * @param y2 Third vertex vertical coordinate
+ */
+void feb_draw_triangle(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
+
+/**
+ * @brief Draws an unfilled outline rounded rectangle with 1px corner radius.
+ *
+ * @param x Top-left horizontal coordinate
+ * @param y Top-left vertical coordinate
+ * @param w Width in pixels
+ * @param h Height in pixels
+ */
+void feb_draw_rrect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+
+/**
+ * @brief Draws a filled solid rounded rectangle with 1px corner radius.
+ *
+ * @param x Top-left horizontal coordinate
+ * @param y Top-left vertical coordinate
+ * @param w Width in pixels
+ * @param h Height in pixels
+ */
+void feb_fill_rrect(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+
+/**
  * @brief Draws an unfilled outline circle centered at (x, y) with radius @p r.
  *
  * @param x Center horizontal coordinate

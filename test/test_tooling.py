@@ -234,6 +234,9 @@ class TestAssembleChip8(unittest.TestCase):
             fillrect v5
             circle v6
             disc v7
+            triangle v8
+            rrect v9
+            fillrrect va
         """
         code = assemble_chip8.assemble(asm)
         expected = bytes([
@@ -245,6 +248,9 @@ class TestAssembleChip8(unittest.TestCase):
             0xF5, 0x95,  # fillrect v5
             0xF6, 0x96,  # circle v6
             0xF7, 0x97,  # disc v7
+            0xF8, 0x9B,  # triangle v8
+            0xF9, 0x9C,  # rrect v9
+            0xFA, 0x9D,  # fillrrect va
         ])
         self.assertEqual(code, expected)
 

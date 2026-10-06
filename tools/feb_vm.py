@@ -407,6 +407,36 @@ class FebVM:
             else:
                 d = d + 4 * x + 6
 
+    def draw_triangle(self, x0, y0, x1, y1, x2, y2, col_ref=None):
+        """Draws hollow outline triangle connecting three vertices."""
+        self.draw_line(x0, y0, x1, y1, col_ref)
+        self.draw_line(x1, y1, x2, y2, col_ref)
+        self.draw_line(x2, y2, x0, y0, col_ref)
+
+    def draw_rrect(self, x, y, w, h, col_ref=None):
+        """Draws unfilled outline rounded rectangle with 1px corner radius."""
+        if w <= 0 or h <= 0:
+            return
+        if w <= 2 or h <= 2:
+            self.draw_rect(x, y, w, h, filled=False, col_ref=col_ref)
+            return
+        self.draw_hline(x + 1, y, w - 2, col_ref)
+        self.draw_hline(x + 1, y + h - 1, w - 2, col_ref)
+        self.draw_vline(x, y + 1, h - 2, col_ref)
+        self.draw_vline(x + w - 1, y + 1, h - 2, col_ref)
+
+    def draw_fill_rrect(self, x, y, w, h, col_ref=None):
+        """Draws solid filled rounded rectangle with 1px corner radius."""
+        if w <= 0 or h <= 0:
+            return
+        if w <= 2 or h <= 2:
+            self.draw_rect(x, y, w, h, filled=True, col_ref=col_ref)
+            return
+        self.draw_hline(x + 1, y, w - 2, col_ref)
+        for row in range(1, h - 1):
+            self.draw_hline(x, y + row, w, col_ref)
+        self.draw_hline(x + 1, y + h - 1, w - 2, col_ref)
+
     def draw_single_char(self, x, y, ch, font_id, col_ref=None):
         """Renders single ASCII character using built-in u8g2 font matching chip8.c."""
         font, fh, fw = feb_fonts.get_font(font_id)
@@ -874,6 +904,34 @@ class FebVM:
                 self.v[0xF] = 1 if self.get_pixel(self.v[x], self.v[(x + 1) & 0xF]) else 0
             elif kk == 0x9A:  # ROTATE Vx
                 self.rotation = self.v[x] & 0x03
+            elif kk == 0x9B:  # TRIANGLE Vx (Vx..V(x+5))
+                col = [False]
+                self.draw_triangle(
+                    self.v[x], self.v[(x + 1) & 0xF],
+                    self.v[(x + 2) & 0xF], self.v[(x + 3) & 0xF],
+                    self.v[(x + 4) & 0xF], self.v[(x + 5) & 0xF],
+                    col
+                )
+                self.v[0xF] = 1 if col[0] else 0
+                self.draw_flag = True
+            elif kk == 0x9C:  # RRECT Vx (Vx..V(x+3))
+                col = [False]
+                self.draw_rrect(
+                    self.v[x], self.v[(x + 1) & 0xF],
+                    self.v[(x + 2) & 0xF], self.v[(x + 3) & 0xF],
+                    col
+                )
+                self.v[0xF] = 1 if col[0] else 0
+                self.draw_flag = True
+            elif kk == 0x9D:  # FILLRRECT Vx (Vx..V(x+3))
+                col = [False]
+                self.draw_fill_rrect(
+                    self.v[x], self.v[(x + 1) & 0xF],
+                    self.v[(x + 2) & 0xF], self.v[(x + 3) & 0xF],
+                    col
+                )
+                self.v[0xF] = 1 if col[0] else 0
+                self.draw_flag = True
 
             # Custom Flashiibo Typography Extensions (FXA0..FXA3)
             elif kk == 0xA0:  # TEXT Vx

@@ -89,6 +89,54 @@ class TestFebVM(unittest.TestCase):
         self.assertEqual(self.vm.v[0xF], 1)
         self.assertFalse(self.vm.get_pixel(15, 15))  # Hollow inside
 
+    def test_triangle_and_rrect_opcodes(self):
+        # Set high res (00FF), DRAWMODE SET (V0=1)
+        rom = bytearray([
+            0x00, 0xFF,        # HIGH
+            0x60, 0x01,        # LD V0, 1
+            0xF0, 0x98,        # DRAWMODE V0
+
+            # TRIANGLE V0 (70, 10, 60, 30, 80, 30)
+            0x60, 70, 0x61, 10,
+            0x62, 60, 0x63, 30,
+            0x64, 80, 0x65, 30,
+            0xF0, 0x9B,        # TRIANGLE V0
+
+            # RRECT V0 (90, 10, 8, 8)
+            0x60, 90, 0x61, 10,
+            0x62, 8,  0x63, 8,
+            0xF0, 0x9C,        # RRECT V0
+
+            # FILLRRECT V0 (100, 10, 8, 8)
+            0x60, 100, 0x61, 10,
+            0x62, 8,   0x63, 8,
+            0xF0, 0x9D,        # FILLRRECT V0
+        ])
+        self.vm.load_rom(bytes(rom))
+        while self.vm.pc < 0x200 + len(rom) and not self.vm.exited:
+            self.vm.step()
+
+        # Triangle checks
+        self.assertTrue(self.vm.get_pixel(70, 10))   # Apex
+        self.assertTrue(self.vm.get_pixel(60, 30))   # Left base
+        self.assertTrue(self.vm.get_pixel(80, 30))   # Right base
+        self.assertFalse(self.vm.get_pixel(70, 25))  # Interior is empty
+
+        # Outline RRECT checks (1px radius bevels)
+        self.assertFalse(self.vm.get_pixel(90, 10))  # Corner (0,0) omitted
+        self.assertFalse(self.vm.get_pixel(97, 10))  # Corner (w-1,0) omitted
+        self.assertFalse(self.vm.get_pixel(90, 17))  # Corner (0,h-1) omitted
+        self.assertFalse(self.vm.get_pixel(97, 17))  # Corner (w-1,h-1) omitted
+        self.assertTrue(self.vm.get_pixel(91, 10))   # Top edge pixel
+        self.assertTrue(self.vm.get_pixel(90, 11))   # Left edge pixel
+        self.assertFalse(self.vm.get_pixel(94, 14))  # Center is empty
+
+        # Filled RRECT checks
+        self.assertFalse(self.vm.get_pixel(100, 10)) # Corner omitted
+        self.assertFalse(self.vm.get_pixel(107, 10)) # Corner omitted
+        self.assertTrue(self.vm.get_pixel(101, 10))  # Inset top row
+        self.assertTrue(self.vm.get_pixel(104, 14))  # Center is filled
+
     def test_rotation_opcode(self):
         # Set high res, ROTATE V0 with V0=1 (90 deg CW portrait), draw pixel at (5, 10)
         rom = bytearray([
