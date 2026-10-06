@@ -240,10 +240,10 @@ static void clear_lines(void) {
             level++;
             thresh += 10;
         }
-        if (level >= 10) {
-            drop_frames = 8;
+        if (level >= 17) {
+            drop_frames = 16;
         } else {
-            drop_frames = 48 - (level - 1) * 4;
+            drop_frames = 48 - (level - 1) * 2;
         }
     }
 }

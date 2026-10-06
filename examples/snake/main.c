@@ -41,6 +41,7 @@ static uint8_t state;
 static uint16_t score;
 static uint16_t high_score;
 static uint8_t speed_frames;
+static uint8_t food_count;
 static uint8_t rpl_buf[2];
 
 /* -------------------------------------------------------------------------
@@ -118,6 +119,7 @@ static void reset_game(void) {
     dir = DIR_RIGHT;
     next_dir = DIR_RIGHT;
     score = 0;
+    food_count = 0;
     speed_frames = 9; /* ~150 ms at 60 Hz */
     state = STATE_READY;
 
@@ -337,8 +339,12 @@ static void step_snake(void) {
             high_score = score;
             save_high_score();
         }
-        if (speed_frames > 4) {
-            speed_frames--;
+        food_count++;
+        if (food_count >= 5) {
+            food_count = 0;
+            if (speed_frames > 4) {
+                speed_frames--;
+            }
         }
         spawn_food();
     } else {
