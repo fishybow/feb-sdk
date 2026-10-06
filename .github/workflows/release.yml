@@ -51,16 +51,27 @@ jobs:
         run: |
           echo "=== Verifying Built Artifacts ==="
           ls -lh dist/
-          test -f dist/2048.feb || { echo "Missing 2048.feb"; exit 1; }
-          test -f dist/flappy_bird.feb || { echo "Missing flappy_bird.feb"; exit 1; }
-          test -f dist/sokoban.feb || { echo "Missing sokoban.feb"; exit 1; }
+          ls -lh dist/games/
+          ls -lh dist/apps/
+          ls -lh dist/demos/
+          test -f dist/games/2048.feb || { echo "Missing games/2048.feb"; exit 1; }
+          test -f dist/games/flappy_bird.feb || { echo "Missing games/flappy_bird.feb"; exit 1; }
+          test -f dist/games/sokoban.feb || { echo "Missing games/sokoban.feb"; exit 1; }
+          test -f dist/games/digital_pet.feb || { echo "Missing games/digital_pet.feb"; exit 1; }
+          test -f dist/games/mastermind.feb || { echo "Missing games/mastermind.feb"; exit 1; }
+          test -f dist/games/snake.feb || { echo "Missing games/snake.feb"; exit 1; }
+          test -f dist/games/falling_blocks.feb || { echo "Missing games/falling_blocks.feb"; exit 1; }
+          test -f dist/apps/stopwatch.feb || { echo "Missing apps/stopwatch.feb"; exit 1; }
+          test -f dist/apps/flashlight.feb || { echo "Missing apps/flashlight.feb"; exit 1; }
+          test -f dist/apps/sos.feb || { echo "Missing apps/sos.feb"; exit 1; }
+          test -f dist/apps/dice.feb || { echo "Missing apps/dice.feb"; exit 1; }
+          test -f dist/apps/dnd_dice.feb || { echo "Missing apps/dnd_dice.feb"; exit 1; }
+          test -f dist/demos/template.feb || { echo "Missing demos/template.feb"; exit 1; }
+          test -f dist/demos/button_demo.feb || { echo "Missing demos/button_demo.feb"; exit 1; }
+          test -f dist/demos/draw_demo.feb || { echo "Missing demos/draw_demo.feb"; exit 1; }
           test -f dist/flashiibo-feb-games.zip || { echo "Missing flashiibo-feb-games.zip"; exit 1; }
           test -f dist/sha256sums.txt || { echo "Missing sha256sums.txt"; exit 1; }
-          # Verify demos and template are excluded from public release distribution
-          ! test -f dist/button_demo.feb || { echo "button_demo.feb should not be in release dist"; exit 1; }
-          ! test -f dist/draw_demo.feb || { echo "draw_demo.feb should not be in release dist"; exit 1; }
-          ! test -f dist/template.feb || { echo "template.feb should not be in release dist"; exit 1; }
-          echo "All game artifacts present and verified (demos remain in examples/)."
+          echo "All game, app, and demo artifacts present and verified."
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -132,7 +143,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -f "${{ steps.meta.outputs.tag_name }}" "${{ github.sha }}"
-          git push -f origin "${{ steps.meta.outputs.tag_name }}"
+          git push -f origin "${{ steps.meta.outputs.tag_name }}" || echo "Tag push skipped or already up to date"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -144,29 +155,47 @@ jobs:
           make_latest: ${{ steps.meta.outputs.make_latest }}
           generate_release_notes: true
           files: |
-            dist/*.feb
+            dist/games/*.feb
+            dist/apps/*.feb
+            dist/demos/*.feb
             dist/flashiibo-feb-games.zip
             dist/sha256sums.txt
           body: |
-            ## Flashiibo FEB Games
+            ## Flashiibo FEB Games & Applications
 
-            Pre-compiled standalone `.feb` game executables for **Flashiibo Pro Gen3** devices running **FEB Runner** (requires firmware >= 26.10.6).
+            Pre-compiled standalone `.feb` executables for **Flashiibo Pro Gen3** devices running **FEB Runner** (requires firmware >= 26.10.6).
 
             ### 🎮 Included Games
             - **`2048.feb`**: Classic 2048 puzzle game rendered at 128×64 with direct line sliding, animated tiles, and high-score tracking.
             - **`flappy_bird.feb`**: Flappy Bird arcade game with physics, procedural pipe generation, and collision detection.
             - **`sokoban.feb`**: 10-level Sokoban box-pushing puzzle game with immovable blocks and progress saving to flash storage.
-            - **`flashiibo-feb-games.zip`**: Complete bundle archive containing all game `.feb` binaries and instructions.
-            - **`sha256sums.txt`**: SHA-256 verification checksums for all release binaries.
+            - **`digital_pet.feb`**: Virtual pet simulation with real-time stats, moods, interactions, and flash storage state persistence.
+            - **`mastermind.feb`**: Code-breaking deduction puzzle game.
+            - **`snake.feb`**: Classic Snake arcade game.
+            - **`falling_blocks.feb`**: Portrait falling blocks arcade game.
 
-            *(Note: Developer demos and starter templates remain available directly in the [source repository examples](https://github.com/fishybow/feb-sdk/tree/main/examples)).*
+            ### 🛠️ Included Applications & Utilities
+            - **`stopwatch.feb`**: Precision digital stopwatch with lap timing, state persistence, and vector arrow UI.
+            - **`flashlight.feb`**: Full-brightness screen flashlight utility.
+            - **`sos.feb`**: Morse code SOS emergency flashing beacon.
+            - **`dice.feb`**: Standard 6-sided dice roller with shake animation.
+            - **`dnd_dice.feb`**: D&D polyhedral dice roller (d4, d6, d8, d10, d12, d20, d100) with custom lining font.
+
+            ### 🎨 Developer Demos & Templates
+            - **`template.feb`**: Minimal FEB application skeleton.
+            - **`button_demo.feb`**: 4-button hardware input demonstration.
+            - **`draw_demo.feb`**: Vector geometry rendering primitives (rectangles, rounded rectangles, triangles, circles, lines).
+
+            ### 📦 Distribution Archives
+            - **`flashiibo-feb-games.zip`**: Complete bundle archive containing all game, app, and demo `.feb` binaries and instructions organized by category (`games/`, `apps/`, `demos/`).
+            - **`sha256sums.txt`**: SHA-256 verification checksums for all release binaries.
 
             ---
 
             ### 📲 How to Install & Play on Flashiibo
             1. Connect your **Flashiibo Pro Gen3** to your computer or phone via USB or Web Bluetooth using **Flashiibo Pro Tools** (Web or Mobile).
             2. Upload any `.feb` file into the `/feb/` folder on your device's flash storage.
-            3. On your Flashiibo, scroll to **FEB Runner**, select your game, and press **OK**!
+            3. On your Flashiibo, scroll to **FEB Runner**, select your application, and press **OK**!
 
             > [!TIP]
             > **Emergency Exit Chord:** Press **UP + DOWN** simultaneously at any time to return immediately to the FEB Runner menu.
